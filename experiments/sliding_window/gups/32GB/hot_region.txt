@@ -1,0 +1,9 @@
+#[page_number],[num_pages],[window_accesses_weight],[pool-start-byte],[pool-length-bytes]
+window-start,window-length,window-weight,left-side-weight,right-side-weight,brk-start,brk-length
+-1,-1,80,-1,-1,0,35052654592
+-1,-1,60,-1,-1,0,35052654592
+41210,4194462,50,0,49,0,35052654592
+323443,3353828,40,3,56,0,35052654592
+970324,2512282,30,11,58,0,35052654592
+323443,1674372,20,3,76,0,35052654592
+

@@ -1,0 +1,7 @@
+benchmark,power/energy-pkg/,r666,seconds-elapsed,user-time
+my_gups/1GB,2.5,NaN,2.0,2.0
+my_gups/4GB,2.5,2.5,2.0,2.0
+my_gups/1GB,3.5,3.5,3.0,3.0
+my_gups/4GB,1.5,1.5,1.0,1.0
+my_gups/1GB,1.5,1.5,1.0,1.0
+my_gups/4GB,3.5,3.5,3.0,3.0

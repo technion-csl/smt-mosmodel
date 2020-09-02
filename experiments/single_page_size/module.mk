@@ -1,0 +1,21 @@
+MODULE_NAME := experiments/single_page_size
+SINGLE_PAGE_SIZE_SUBMODULES := 2mb_mosalloc 4kb_mosalloc 1gb_mosalloc
+SINGLE_PAGE_SIZE_CONFIGURATIONS := $(SINGLE_PAGE_SIZE_SUBMODULES)
+SUBMODULES := $(SINGLE_PAGE_SIZE_SUBMODULES)
+SUBMODULES := $(addprefix $(MODULE_NAME)/,$(SUBMODULES))
+
+SINGLE_PAGE_SIZE_COMMON_INCLUDE := $(ROOT_DIR)/$(MODULE_NAME)/common.mk
+
+SINGLE_PAGE_SIZE_NUM_OF_REPEATS := 3
+$(MODULE_NAME)/%: NUM_OF_REPEATS := $(SINGLE_PAGE_SIZE_NUM_OF_REPEATS)
+
+PER_BENCHMARK_TARGETS := $(addprefix $(MODULE_NAME)/,$(INTERESTING_BENCHMARKS))
+SINGLE_PAGE_TARGETS := $(foreach submodule,$(SUBMODULES),$(addprefix $(submodule)/,$(INTERESTING_BENCHMARKS)))
+
+$MODULE_NAME): $(SINGLE_PAGE_TARGETS)
+
+$(PER_BENCHMARK_TARGETS): $(MODULE_NAME)/%: $(addsuffix /%,$(SUBMODULES))
+	echo "Finished running all configurations of benchmark $*: $^"
+
+include $(ROOT_DIR)/common.mk
+

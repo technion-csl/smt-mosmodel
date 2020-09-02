@@ -1,0 +1,3 @@
+benchmark,power/energy-pkg/,r666,seconds-elapsed,user-time
+my_gups/1GB,1.0,1.4142135623730951,1.0,1.0
+my_gups/4GB,1.0,1.0,1.0,1.0

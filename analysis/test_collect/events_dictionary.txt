@@ -1,0 +1,3 @@
+#event,number,more_columns_that_we_ignore
+EVENT1,r555,dummy1
+EVENT2,r666,dummy2

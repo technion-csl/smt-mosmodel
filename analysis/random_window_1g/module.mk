@@ -1,0 +1,9 @@
+MODULE_NAME := analysis/random_window_1g
+SUBMODULES := 
+
+$(MODULE_NAME)/%: NUM_OF_REPEATS := $(RANDOM_WINDOW_1G_NUM_OF_REPEATS)
+$(MODULE_NAME)/%: CONFIGURATION_LIST := \
+	$(call array_to_comma_separated,$(RANDOM_WINDOW_1G_CONFIGURATIONS))
+
+include $(COMMON_ANALYSIS_MAKEFILE)
+

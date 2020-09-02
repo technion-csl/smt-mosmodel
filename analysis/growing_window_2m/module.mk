@@ -1,0 +1,9 @@
+MODULE_NAME := analysis/growing_window_2m
+SUBMODULES := 
+
+$(MODULE_NAME)/%: NUM_OF_REPEATS := $(GROWING_WINDOW_NUM_OF_REPEATS)
+$(MODULE_NAME)/%: CONFIGURATION_LIST := \
+	$(call array_to_comma_separated,$(GROWING_WINDOW_CONFIGURATIONS))
+
+include $(COMMON_ANALYSIS_MAKEFILE)
+
