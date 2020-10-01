@@ -22,7 +22,7 @@ endef
 # uses variables defined in module A, than module A should come before module B
 SUBMODULES := experiments analysis
 
-include benchmarks.mk
+include benchmark.mk
 include $(ROOT_DIR)/common.mk
 
 # a top-level "clean" target, which calls all/clean
