@@ -1,4 +1,4 @@
-export BENCHMARK := /home/idanyani/csl-benchmarks/my_gups/sequential-2GB/sequential
+export BENCHMARK := $(ROOT_DIR)/gups.py
 
 # some constants
 export KIBI := $$(( 1024 ))
