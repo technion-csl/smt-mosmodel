@@ -15,6 +15,7 @@ After
 # Mosmodel Directory Structure
 
 # Prerequisites
+- Please note that makefile tries to download necessary packages using apt for Ubuntu. If you are using a different distribution, then please modify the makefile to use the proper package management software. 
 - Sudo permissions: multiple steps requires sudo priviliges, e.g., installing apt packages (perf, numactl, ...) and reserving hugepages. We recommend to configure sudo permissions without password to fully automate the workflow. Sudo without password may stop the workflow at these steps prompting for your password.
 - Python3
 

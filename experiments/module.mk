@@ -26,7 +26,8 @@ RUN_BENCHMARK_SCRIPT := $(SCRIPTS_ROOT_DIR)/runBenchmark.py
 
 export EXPERIMENTS_ROOT := $(ROOT_DIR)/$(MODULE_NAME)
 export EXPERIMENTS_TEMPLATE := $(EXPERIMENTS_ROOT)/template.mk
-export BOUND_MEMORY_NODE := 1
+NUMBER_OF_SOCKETS := $(shell ls -d /sys/devices/system/node/node*/ | wc -w)
+export BOUND_MEMORY_NODE := $$(( $(NUMBER_OF_SOCKETS) - 1 ))
 
 define configuration_array
 $(addprefix configuration,$(shell seq 1 $1))
