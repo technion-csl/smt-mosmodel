@@ -10,8 +10,8 @@ SUBMODULES := $(addprefix $(MODULE_NAME)/,$(SUBMODULES))
 ##### mosalloc paths
 RUN_MOSALLOC_TOOL := $(ROOT_DIR)/mosalloc/runMosalloc.py
 RESERVE_HUGE_PAGES := $(ROOT_DIR)/mosalloc/reserveHugePages.sh
+MOSALLOC_MAKEFILE := $(ROOT_DIR)/mosalloc/CMakeLists.txt
 export MOSALLOC_TOOL := $(ROOT_DIR)/mosalloc/src/libmosalloc.so
-
 
 ##### scripts
 
@@ -25,7 +25,7 @@ RUN_BENCHMARK_SCRIPT := $(SCRIPTS_ROOT_DIR)/runBenchmark.py
 ###### global constants
 
 export EXPERIMENTS_ROOT := $(ROOT_DIR)/$(MODULE_NAME)
-export EXPERIMENTS_TEMPLATE := $(EXPERIMENTS_ROOT)/experiments_template.mk
+export EXPERIMENTS_TEMPLATE := $(EXPERIMENTS_ROOT)/template.mk
 export BOUND_MEMORY_NODE := 1
 
 define configuration_array
@@ -34,19 +34,31 @@ endef
 
 #### recipes and rules for prerequisites
 
-.PHONY: experiments-prerequisites perf numactl
+$(MOSALLOC_TOOL): $(MOSALLOC_MAKEFILE) cmake
+	cd $(dir $<)
+	cmake .
+	make
+
+$(MOSALLOC_MAKEFILE):
+	git submodule update --init --progress
+
+.PHONY: experiments-prerequisites perf numactl cmake
 
 experiments-prerequisites: perf numactl
 
 PERF_PACKAGES := linux-tools
 KERNEL_VERSION := $(shell uname -r)
 PERF_PACKAGES := $(addsuffix -$(KERNEL_VERSION),$(PERF_PACKAGES))
+APT_INSTALL := sudo apt install -y
 perf:
 	$(CHECK_PARANOID)
-	sudo apt install -y "$(PERF_PACKAGES)"
+	$(APT_INSTALL) "$(PERF_PACKAGES)"
 
 numactl:
-	sudo apt install -y $@
+	$(APT_INSTALL) $@
+
+cmake:
+	$(APT_INSTALL) $@
 
 TEST_RUN_MOSALLOC_TOOL := $(SCRIPTS_ROOT_DIR)/testRunMosallocTool.sh
 .PHONY: test-run-mosalloc-tool
