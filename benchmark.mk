@@ -1,13 +1,4 @@
-# If the benchmark is a standalone n\binary then please leave the 
-# BENCHMARK_PATH variable empty and specify the full path for the benchmark in 
-# BENCHMARK_COMMAND. Otherwise, if the benchmark requires additinal files then 
-# please specify the path of the folder which contains the benchmark and all of 
-# its prerequisites files in BENCHMARK_PATH and specify the benchmark binary 
-# name and its arguments in BENCHMARK_COMMAND
-export BENCHMARK_PATH := /home/idanyani/csl-benchmarks/gups/1GB
-export BENCHMARK_COMMAND := run.sh
-#export BENCHMARK_PATH :=
-#export BENCHMARK_COMMAND := /home/idanyani/csl-benchmarks/my_gups/sequential-2GB/sequential
+export BENCHMARK := /home/idanyani/csl-benchmarks/my_gups/sequential-2GB/sequential
 
 # some constants
 export KIBI := $$(( 1024 ))

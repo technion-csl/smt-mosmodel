@@ -16,14 +16,13 @@ def readSingleFile(file_name, metrics_column=0, stats_column=1):
     return df
 
 class Experiment:
-    def __init__(self, configuration, benchmark, experiments_root):
-        self._configuration = configuration
-        self._benchmark = benchmark
+    def __init__(self, layout, experiments_root):
+        self._layout = layout
         self._experiments_root = experiments_root
 
     def collect(self, repeat):
         experiment_dir = self._experiments_root + '/' + \
-        self._configuration + '/' + self._benchmark + '/repeat' + str(repeat)
+        self._layout + '/repeat' + str(repeat)
         perf_file_name = experiment_dir + '/perf.out'
         perf_df = readSingleFile(perf_file_name, metrics_column=2,
                                                 stats_column=0)

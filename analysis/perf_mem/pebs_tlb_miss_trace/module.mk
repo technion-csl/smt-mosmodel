@@ -18,12 +18,12 @@ $(MODULE_NAME): $(WINDOW_FILES)
 
 $(WINDOW_2MB_FILES): $(MODULE_NAME)/%/$(WINDOW_2MB_FILE_NAME): $(MODULE_NAME)/%
 	mkdir -p $(dir $@)
-	mem_footprint=`grep $*  analysis/single_page_size/memory_footprints.csv | cut -d ',' -f 5`
+	mem_footprint=`grep $* $(MEMORY_FOOTPRINT_FILE) | cut -d ',' -f 5`
 	$(FIND_WINDOW_SCRIPT) --input_file=$^/$(MEM_BINS_2MB_CSV_FILE) --output_file=$@ --memory_footprint=$$mem_footprint --page_size=2MB
 
 $(WINDOW_4KB_FILES): $(MODULE_NAME)/%/$(WINDOW_4KB_FILE_NAME): $(MODULE_NAME)/%
 	mkdir -p $(dir $@)
-	mem_footprint=`grep $*  analysis/single_page_size/memory_footprints.csv | cut -d ',' -f 5`
+	mem_footprint=`grep $* $(MEMORY_FOOTPRINT_FILE) | cut -d ',' -f 5`
 	$(FIND_WINDOW_SCRIPT) --input_file=$^/$(MEM_BINS_4KB_CSV_FILE) --output_file=$@ --memory_footprint=$$mem_footprint --page_size=4KB
 
 .PHONY: copy-weighted-window

@@ -2,9 +2,8 @@
 
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument('-m', '--memory_footprints', default='memory_footprints.txt')
-parser.add_argument('-b', '--benchmark', required=True)
-parser.add_argument('-n', '--num_layouts', type=int, default=32)
+parser.add_argument('-m', '--memory_footprint', default='memory_footprint.txt')
+parser.add_argument('-n', '--num_layouts', type=int, default=9)
 parser.add_argument('--use_1gb_hugepages', action='store_true', default=False)
 parser.add_argument('--max_1gb_hugepages', type=int, default=4)
 parser.add_argument('-o', '--output', required=True)
@@ -59,7 +58,7 @@ def buildBenchmarkLayouts(
     return layouts
 
 import pandas as pd
-footprints_df = pd.read_csv(args.memory_footprints, index_col='benchmark')
+footprint_df = pd.read_csv(args.memory_footprint)
 
 def isPowerOfTwo(number):
     return (number != 0) and ((number & (number - 1)) == 0)
@@ -71,9 +70,9 @@ if not isPowerOfTwo(num_layouts):
 import os
 min_levels = 1
 max_levels = int(num_layouts / min_levels)
-mmap_footprint = footprints_df.loc[args.benchmark, 'anon-mmap-max']
+mmap_footprint = footprint_df['anon-mmap-max'][0]
 mmap_footprint = round_up(mmap_footprint, 2*mb)
-brk_footprint = footprints_df.loc[args.benchmark, 'brk-max']
+brk_footprint = footprint_df['brk-max'][0]
 brk_footprint = round_up(brk_footprint, 2*mb)
 layouts = buildBenchmarkLayouts(min_levels, max_levels, \
         mmap_footprint, brk_footprint)
@@ -104,6 +103,10 @@ layouts += [all_hugepages_layout]
 # huge pages first in growing_window to prevent huge-pages-reservation failures
 # in case of memory fragmentation (and then huge-pages reservation fails)
 layouts.reverse()
+
+# prefix each configuration with layoutX: where X is the layout number
+for i in range(len(layouts)):
+    layouts[i] = 'layout' +str(i+1) + ': ' + layouts[i]
 
 with open(args.output, 'w+') as output_fid:
     print('\n'.join(layouts), file=output_fid)

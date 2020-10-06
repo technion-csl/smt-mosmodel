@@ -13,6 +13,11 @@ After
 
 # What is Mosmodel
 # Mosmodel Directory Structure
+
+# Prerequisites
+- Sudo permissions: multiple steps requires sudo priviliges, e.g., installing apt packages (perf, numactl, ...) and reserving hugepages. We recommend to configure sudo permissions without password to fully automate the workflow. Sudo without password may stop the workflow at these steps prompting for your password.
+- Python3
+
 # Technical Details
 Mosmodel assumes that the benchmark allocates < 100MB through `mmap()`. In case your benchmark allocates more than 100MB, please increase the `MMAP_POOL_LIMIT` in benchmark.mk
 Mosmodel scans only Mosalloc layouts on the `brk()` pool because it assumes that the benchmark allocates memory through `malloc()`. In case your benchmark uses different allocators (than glibc `malloc()`), please update the TODO script, which creates the Mosalloc layouts.

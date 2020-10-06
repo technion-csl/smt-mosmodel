@@ -1,0 +1,20 @@
+MODULE_NAME := experiments/memory_footprint
+
+MEMORY_FOOTPRINT_EXPERIMENT := $(MODULE_NAME)
+BENCHMARK_MAX_RES_MEMORY_FILE := $(MEMORY_FOOTPRINT_EXPERIMENT)/max_mem.txt
+TIME_OUTPUT := $(MEMORY_FOOTPRINT_EXPERIMENT)/time.out
+
+$(MODULE_NAME): $(BENCHMARK_MAX_RES_MEMORY_FILE)
+
+$(BENCHMARK_MAX_RES_MEMORY_FILE): $(TIME_OUTPUT)
+	grep "Maximum resident" $(TIME_OUTPUT) | cut -d ':' -f 2 | tr -d ' ' > $@
+
+$(TIME_OUTPUT): $(BENCHMARK) /usr/bin/time
+	/usr/bin/time -v -o $(TIME_OUTPUT) $(BENCHMARK)
+
+DELETED_TARGETS := $(BENCHMARK_MAX_RES_MEMORY_FILE) $(TIME_OUTPUT)
+CLEAN_TARGETS := $(addsuffix /clean,$(DELETED_TARGETS))
+$(CLEAN_TARGETS): %/clean: %/delete
+$(MODULE_NAME)/clean: $(CLEAN_TARGETS)
+
+

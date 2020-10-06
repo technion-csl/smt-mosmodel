@@ -11,26 +11,19 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('-e', '--experiments_root', default='experiments/',
                     help='the directory containing results in a tree '+\
-                    'structure of configuration/benchmark/repeat')
-parser.add_argument('-b', '--benchmarks', required=True,
-                    help='a comma-separated list of benchmarks')
-parser.add_argument('-c', '--configurations', required=True,
-                    help='a comma-separated list of configurations')
+                    'structure of layout/repeat')
+parser.add_argument('-l', '--layouts', required=False, default=None,
+                    help='a comma-separated list of layouts')
 parser.add_argument('-r', '--repeats', default=1, type=int,
-                    help='repeats number of each benchmark')
+                    help='repeats number of each experiment layout')
 parser.add_argument('-o', '--output_dir', required=True,
                     help='the directory for all output files')
 args = parser.parse_args()
 
 try:
-    benchmark_list = args.benchmarks.strip().split(',')
+    layout_list = args.layouts.strip().split(',')
 except KeyError:
-    sys.exit('Error: could not parse the --benchmarks argument')
-
-try:
-    configuration_list = args.configurations.strip().split(',')
-except KeyError:
-    sys.exit('Error: could not parse the --configurations argument')
+    sys.exit('Error: could not parse the --layouts argument')
 
 # build the output directory
 import os
@@ -40,9 +33,8 @@ output_dir = args.output_dir + '/'
 
 # collect the results, one dataframe for each repetition
 dataframe_list = []
-for repeat in range(args.repeats):
-    experiment_list = ExperimentList(configuration_list, benchmark_list,
-                                     args.experiments_root)
+for repeat in range(1, args.repeats+1):
+    experiment_list = ExperimentList(layout_list, args.experiments_root)
     df = experiment_list.collect(repeat)
     csv_file_name = 'repeat' + str(repeat) + '.csv'
     writeDataframeToCsv(df, output_dir + csv_file_name)

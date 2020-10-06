@@ -7,8 +7,6 @@ $(MODULE_NAME)/%: CONFIGURATION_LIST := \
 
 include $(COMMON_ANALYSIS_MAKEFILE)
 
-MEMORY_FOOTPRINTS_FILE := $(MODULE_NAME)/memory_footprints.csv
-
 SINGLE_PAGE_SIZE_CSV_FILES := $(addprefix $(MODULE_NAME)/,$(SINGLE_PAGE_SIZE_SUBMODULES))
 SINGLE_PAGE_SIZE_CSV_FILES := $(addsuffix /mean.csv,$(SINGLE_PAGE_SIZE_CSV_FILES))
 
@@ -17,7 +15,7 @@ LINEAR_MODELS_COEFFS := $(MODULE_NAME)/linear_models_coeffs.csv
 MEAN_2MB_CSV_FILE := $(MODULE_NAME)/2mb_mosalloc/mean.csv
 MEAN_4KB_CSV_FILE := $(MODULE_NAME)/4kb_mosalloc/mean.csv
 
-SUMMARY_FILES := $(SINGLE_PAGE_SIZE_CSV_FILES) $(LINEAR_MODELS_COEFFS) $(MEMORY_FOOTPRINTS_FILE)
+SUMMARY_FILES := $(SINGLE_PAGE_SIZE_CSV_FILES) $(LINEAR_MODELS_COEFFS)
 
 $(LINEAR_MODELS_COEFFS): $(SINGLE_PAGE_SIZE_CSV_FILES)
 	$(BUILD_LINEAR_MODELS_COEFFS) --benchmarks=$(INTERESTING_BENCHMARKS_LIST) \
@@ -28,10 +26,6 @@ $(SINGLE_PAGE_SIZE_CSV_FILES): $(MODULE_NAME)/%/mean.csv: | experiments/single_p
 	$(COLLECT_RESULTS) --experiments_root=$(dir $|) \
 		--configurations=$* --benchmarks=$(INTERESTING_BENCHMARKS_LIST) \
 		--repeats $(NUM_OF_REPEATS) --output_dir=$(dir $@)
-
-$(MEMORY_FOOTPRINTS_FILE): | experiments/single_page_size/4kb_mosalloc
-	$(COLLECT_MEMORY_FOOTPRINTS) $| \
-		--output=$@ --benchmarks=$(INTERESTING_BENCHMARKS_LIST)
 
 DELETE_TARGETS := $(addsuffix /delete,$(SUMMARY_FILES))
 $(MODULE_NAME)/clean: $(DELETE_TARGETS)

@@ -37,14 +37,14 @@ SLIDING_WINDOW_CONFIGURATION_FILES := $(addsuffix /configurations.txt,$(SLIDING_
 SLIDING_WINDOW_CONFIGURATION_OUTPUT_DIR := $(SLIDING_WINDOW_MODULE_NAME)
 
 $(SLIDING_WINDOW_CONFIGURATION_FILES): $(SLIDING_WINDOW_MODULE_NAME)/%/configurations.txt: experiments/sliding_window/%/hot_region.txt	\
-	analysis/single_page_size/memory_footprints.csv
+	analysis/single_page_size/memory_footprint.csv
 	mkdir -p $(dir $@)
 	if [[ "$*" == *"gups"* ]] || [[ "$*" == *"471.omnetpp"* && "$(CREATE_SLIDING_EXTRA_PARAMS)" == *"80"* ]]; then
 	echo There are no sliding window configurations for this workload > $@
 	else
 	$(CREATE_SLIDING_WINDOW_CONFIGURATIONS_SCRIPT) \
 		$(CREATE_SLIDING_EXTRA_PARAMS) \
-		--memory_footprints=$(MEMORY_FOOTPRINTS_FILE) \
+		--memory_footprint=$(MEMORY_FOOTPRINT_FILE) \
 		--hot_region=$< \
 		--num_configurations=$(NUM_OF_SLIDING_WINDOW_CONFIGURATIONS) \
 		--benchmark $* \

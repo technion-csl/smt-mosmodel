@@ -1,21 +1,15 @@
 MODULE_NAME := experiments/single_page_size
-SINGLE_PAGE_SIZE_SUBMODULES := 2mb_mosalloc 4kb_mosalloc 1gb_mosalloc
-SINGLE_PAGE_SIZE_CONFIGURATIONS := $(SINGLE_PAGE_SIZE_SUBMODULES)
-SUBMODULES := $(SINGLE_PAGE_SIZE_SUBMODULES)
-SUBMODULES := $(addprefix $(MODULE_NAME)/,$(SUBMODULES))
+LAYOUTS := layout2mb layout4kb layout1gb
 
-SINGLE_PAGE_SIZE_COMMON_INCLUDE := $(ROOT_DIR)/$(MODULE_NAME)/common.mk
+EXTRA_ARGS_FOR_MOSALLOC := --analyze
 
-SINGLE_PAGE_SIZE_NUM_OF_REPEATS := 3
-$(MODULE_NAME)/%: NUM_OF_REPEATS := $(SINGLE_PAGE_SIZE_NUM_OF_REPEATS)
+#include $(ROOT_DIR)/common.mk
+include $(EXPERIMENTS_TEMPLATE)
 
-PER_BENCHMARK_TARGETS := $(addprefix $(MODULE_NAME)/,$(INTERESTING_BENCHMARKS))
-SINGLE_PAGE_TARGETS := $(foreach submodule,$(SUBMODULES),$(addprefix $(submodule)/,$(INTERESTING_BENCHMARKS)))
+CREATE_SINGLE_PAGE_LAYOUTS_SCRIPT := $(MODULE_NAME)/createLayouts.py
+$(LAYOUTS_FILE): $(BENCHMARK_MAX_RES_MEMORY_FILE)
+	$(CREATE_SINGLE_PAGE_LAYOUTS_SCRIPT) --max_res_memory_kb=`cat $<` --mmap_pool_limit=$(MMAP_POOL_LIMIT) --output=$@
 
-$MODULE_NAME): $(SINGLE_PAGE_TARGETS)
-
-$(PER_BENCHMARK_TARGETS): $(MODULE_NAME)/%: $(addsuffix /%,$(SUBMODULES))
-	echo "Finished running all configurations of benchmark $*: $^"
-
-include $(ROOT_DIR)/common.mk
-
+# undefine LAYOUTS to allow next makefiles to use the defaults LAYOUTS
+undefine EXTRA_ARGS_FOR_MOSALLOC
+undefine LAYOUTS

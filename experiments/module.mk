@@ -1,21 +1,9 @@
 MODULE_NAME := experiments
-SUBMODULES := general_metrics \
-	mmap_brk_effects \
-	growing_window_2m \
-	sliding_window \
-	sliding_window_20 \
-	sliding_window_40 \
-	sliding_window_50 \
-	sliding_window_60 \
-	sliding_window_80 \
-	random_window_2m \
-	random_window_1g \
-	growing_window_with_offset \
-	user_defined_window \
-	strace_memory \
+SUBMODULES := \
+	memory_footprint \
 	single_page_size \
-	tlb_simulation \
-	perf_mem
+	growing_window_2m \
+	random_window_2m
 SUBMODULES := $(addprefix $(MODULE_NAME)/,$(SUBMODULES))
 
 ##### mosalloc paths
@@ -26,6 +14,7 @@ export MOSALLOC_TOOL := $(ROOT_DIR)/mosalloc/src/libmosalloc.so
 
 ##### scripts
 
+COLLECT_RESULTS_SCRIPT := $(ROOT_DIR)/$(MODULE_NAME)/collectResults.py
 CHECK_PARANOID := $(ROOT_DIR)/$(MODULE_NAME)/checkParanoid.sh
 SET_THP := $(ROOT_DIR)/$(MODULE_NAME)/setTransparentHugePages.sh
 SET_CPU_MEMORY_AFFINITY := $(ROOT_DIR)/$(MODULE_NAME)/setCpuMemoryAffinity.sh
@@ -35,6 +24,7 @@ RUN_BENCHMARK_SCRIPT := $(ROOT_DIR)/$(MODULE_NAME)/runBenchmark.py
 ###### global constants
 
 export EXPERIMENTS_ROOT := $(ROOT_DIR)/$(MODULE_NAME)
+export EXPERIMENTS_TEMPLATE := $(EXPERIMENTS_ROOT)/experiments_template.mk
 MOSALLOC_TEMPLATE := $(MODULE_NAME)/mosalloc_template.mk
 export NUMBER_OF_SOCKETS := $(shell ls -d /sys/devices/system/node/node*/ | wc -w)
 export NUMBER_OF_CORES_PER_SOCKET := $(shell ls -d /sys/devices/system/node/node0/cpu*/ | wc -w)
