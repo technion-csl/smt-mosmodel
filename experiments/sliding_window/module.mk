@@ -1,11 +1,11 @@
-MODULE_NAME := experiments/sliding_window
-SLIDING_WINDOW_MODULE_NAME := $(MODULE_NAME)
-WEIGHTED_WINDOW_ROOT_DIR := $(MODULE_NAME)
-$(MODULE_NAME)%: SLIDING_WINDOW_MODULE_NAME := $(MODULE_NAME)
-$(MODULE_NAME)%: CREATE_SLIDING_EXTRA_PARAMS := --weight=50
+SLIDING_WINDOW_MODULE_NAME := experiments/sliding_window
+HOT_REGIONS_FILE := $(MODULE_NAME)/hot_regions.txt
+SLIDING_WINDOW_WEIGHTS := 20 40 50 60 80
+CREATE_SLIDING_WINDOW_LAYOUTS_SCRIPT := $(SLIDING_WINDOW_MODULE_NAME)/createLayouts.py
 
-CREATE_SLIDING_WINDOW_CONFIGURATIONS_SCRIPT := $(MODULE_NAME)/createConfigurations.py
+define sliding-makefiles
+SLIDING_WINDOW_WEIGHT := $(1)
+include $(SLIDING_WINDOW_MODULE_NAME)/sliding_window_template.mk
+endef
 
-include $(ROOT_DIR)/experiments/sliding_window_template.mk
-
-
+$(foreach w,$(SLIDING_WINDOW_WEIGHTS),$(eval $(call sliding-makefiles,$(w))))

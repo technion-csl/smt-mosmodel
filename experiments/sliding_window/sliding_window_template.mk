@@ -1,0 +1,15 @@
+MODULE_NAME := $(SLIDING_WINDOW_MODULE_NAME)/window_$(SLIDING_WINDOW_WEIGHT)
+
+include $(EXPERIMENTS_TEMPLATE)
+
+$(LAYOUTS_FILE): WEIGHT := $(SLIDING_WINDOW_WEIGHT)
+$(LAYOUTS_FILE): $(HOT_REGIONS_FILE) $(MEMORY_FOOTPRINT_FILE)
+	mkdir -p $(dir $@)
+	$(CREATE_SLIDING_WINDOW_LAYOUTS_SCRIPT) \
+		--weight=$(WEIGHT) \
+		--memory_footprint=$(MEMORY_FOOTPRINT_FILE) \
+		--hot_region=$(HOT_REGION_FILE) \
+		--num_layouts=$(NUM_LAYOUTS) \
+		--output=$@
+
+

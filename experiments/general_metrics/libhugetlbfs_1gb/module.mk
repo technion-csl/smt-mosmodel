@@ -21,5 +21,4 @@ $(MOUNT_POINT_EMPTY_FILE):
 				# and thus we will have to mount again hugetlbs
 
 BIG_MEMORY_EXPERIMENT_DIRS := $(addprefix $(MODULE_NAME)/,$(BIG_MEMORY_BENCHMARKS))
-$(BIG_MEMORY_EXPERIMENT_DIRS): | reserve-max-1gb-pages
 

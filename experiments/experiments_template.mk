@@ -37,6 +37,7 @@ $(MEASUREMENTS): $(EXPERIMENT_DIR)/layout%: $(LAYOUTS_FILE)
 		$(RUN_MOSALLOC_TOOL) --library $(MOSALLOC_TOOL) $$ARGS_FOR_MOSALLOC $(EXTRA_ARGS_FOR_MOSALLOC) -- \
 		$(BENCHMARK)
 
+results: $(RESULT_DIR)
 $(RESULTS): LAYOUT_LIST := $(call array_to_comma_separated,$(LAYOUTS))
 $(RESULT_DIR): $(RESULTS)
 $(RESULTS): results/%/mean.csv: experiments/%
