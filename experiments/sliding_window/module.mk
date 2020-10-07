@@ -5,7 +5,7 @@ CREATE_SLIDING_WINDOW_LAYOUTS_SCRIPT := $(SLIDING_WINDOW_MODULE_NAME)/createLayo
 
 define sliding-makefiles
 SLIDING_WINDOW_WEIGHT := $(1)
-include $(SLIDING_WINDOW_MODULE_NAME)/sliding_window_template.mk
+include $(SLIDING_WINDOW_MODULE_NAME)/template.mk
 endef
 
 $(foreach w,$(SLIDING_WINDOW_WEIGHTS),$(eval $(call sliding-makefiles,$(w))))

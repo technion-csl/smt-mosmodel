@@ -76,5 +76,8 @@ $(MODULE_NAME)/clean:
 
 ### include common makefile
 
+### define RESULT_DIRS to hold all created result directories
+RESULT_DIRS :=
+
 include $(ROOT_DIR)/common.mk
 

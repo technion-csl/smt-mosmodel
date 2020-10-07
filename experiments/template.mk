@@ -13,6 +13,7 @@ endif # ifndef NUM_OF_REPEATS
 
 EXPERIMENT_DIR := $(MODULE_NAME)
 RESULT_DIR := $(subst experiments,results,$(EXPERIMENT_DIR))
+RESULT_DIRS += $(RESULT_DIR)
 
 LAYOUTS_FILE := $(EXPERIMENT_DIR)/layouts.txt
 

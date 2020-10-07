@@ -1,9 +1,10 @@
-MODULE_NAME := analysis/sliding_window
+ANALYSIS_SLIDING_WINDOW_MODULE_NAME := analysis/sliding_window
 SUBMODULES := 
 
-$(MODULE_NAME)/%: NUM_OF_REPEATS := $(SLIDING_WINDOW_NUM_OF_REPEATS)
-$(MODULE_NAME)/%: CONFIGURATION_LIST := \
-	$(call array_to_comma_separated,$(SLIDING_WINDOW_CONFIGURATIONS))
+define analysis-sliding-makefiles
+SLIDING_WINDOW_WEIGHT := $(1)
+include $(ANALYSIS_SLIDING_WINDOW_MODULE_NAME)/template.mk
+endef
 
-include $(COMMON_ANALYSIS_MAKEFILE)
+$(foreach w,$(SLIDING_WINDOW_WEIGHTS),$(eval $(call analysis-sliding-makefiles,$(w))))
 

@@ -4,9 +4,9 @@ SUBMODULES :=
 RESULT_FILE := $(MODULE_NAME)/mosalloc_glibc_overhead.csv
 .PHONY: $(MODULE_NAME)
 
-$(MODULE_NAME): analysis/single_page_size/4kb_mosalloc/mean.csv analysis/general_metrics/glibc_malloc/mean.csv
+$(MODULE_NAME): results/single_page_size/mean.csv analysis/general_metrics/glibc_malloc/mean.csv
 	$(BUILD_OVERHEAD_SCRIPT) \
-		--mosalloc_4k_mean=analysis/single_page_size/4kb_mosalloc/mean.csv \
+		--mosalloc_4k_mean=results/single_page_size/mean.csv \
 		--glibc_malloc_mean=analysis/general_metrics/glibc_malloc/mean.csv \
 		--benchmarks=$(INTERESTING_BENCHMARKS_LIST) \
 		--output $(RESULT_FILE)

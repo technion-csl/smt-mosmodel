@@ -3,6 +3,7 @@ SUBMODULES := \
 	growing_window_2m \
 	random_window_2m \
 	sliding_window \
+	linear_models_coeffs #\
 	train_mosmodel test_mosmodel all_data \
 	tlb_misses_vs_table_walks \
 	single_page_size model_errors perf_mem
