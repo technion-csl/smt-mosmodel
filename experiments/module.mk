@@ -35,7 +35,7 @@ endef
 
 #### recipes and rules for prerequisites
 
-$(MOSALLOC_TOOL): $(MOSALLOC_MAKEFILE) cmake
+$(MOSALLOC_TOOL): $(MOSALLOC_MAKEFILE)
 	cd $(dir $<)
 	cmake .
 	make
@@ -43,7 +43,7 @@ $(MOSALLOC_TOOL): $(MOSALLOC_MAKEFILE) cmake
 $(MOSALLOC_MAKEFILE):
 	git submodule update --init --progress
 
-.PHONY: experiments-prerequisites perf numactl cmake
+.PHONY: experiments-prerequisites perf numactl
 
 experiments-prerequisites: perf numactl
 
@@ -56,9 +56,6 @@ perf:
 	$(APT_INSTALL) "$(PERF_PACKAGES)"
 
 numactl:
-	$(APT_INSTALL) $@
-
-cmake:
 	$(APT_INSTALL) $@
 
 TEST_RUN_MOSALLOC_TOOL := $(SCRIPTS_ROOT_DIR)/testRunMosallocTool.sh

@@ -1,15 +1,15 @@
-# Set the layouts to default if they were not defined in the specific 
-# experiment makefile (module.mk)
-#ifeq $($(LAYOUTS),"")
-ifndef LAYOUTS
-# Set the number of layouts to default (which is 9) if it was not set by the 
-# specific experiment makefile.
 ifndef NUM_LAYOUTS
 NUM_LAYOUTS := 9
 endif # ifndef NUM_LAYOUTS
+
+ifndef LAYOUTS
 LAYOUTS := $(shell seq 1 $(NUM_LAYOUTS))
 LAYOUTS := $(addprefix layout,$(LAYOUTS)) 
 endif #ifndef LAYOUTS
+
+ifndef NUM_OF_REPEATS
+NUM_OF_REPEATS := 4
+endif # ifndef NUM_OF_REPEATS
 
 EXPERIMENT_DIR := $(MODULE_NAME)
 RESULT_DIR := $(subst experiments,results,$(EXPERIMENT_DIR))
