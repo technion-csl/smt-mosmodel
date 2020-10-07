@@ -22,7 +22,7 @@ RESULTS := $(addsuffix /mean.csv,$(RESULT_DIR))
 REPEATS := $(shell seq 1 $(NUM_OF_REPEATS))
 REPEATS := $(addprefix repeat,$(REPEATS)) 
 
-EXPERIMENT_REPEATS := $(foreach repeat,$(REPEATS),$(addsuffix /$(repeat),$(EXPERIMENTS)))
+EXPERIMENT_REPEATS := $(foreach experiment,$(EXPERIMENTS),$(foreach repeat,$(REPEATS),$(experiment)/$(repeat)))
 MEASUREMENTS := $(addsuffix /perf.out,$(EXPERIMENT_REPEATS))
 
 $(EXPERIMENT_DIR): $(MEASUREMENTS)
