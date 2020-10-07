@@ -1,6 +1,6 @@
 MODULE_NAME := experiments
 SUBMODULES := \
-	memory_footprint \
+	without_mosalloc \
 	single_page_size \
 	growing_window_2m \
 	random_window_2m \
@@ -21,6 +21,7 @@ SET_THP := $(SCRIPTS_ROOT_DIR)/setTransparentHugePages.sh
 SET_CPU_MEMORY_AFFINITY := $(SCRIPTS_ROOT_DIR)/setCpuMemoryAffinity.sh
 MEASURE_GENERAL_METRICS := $(SCRIPTS_ROOT_DIR)/measureGeneralMetrics.sh
 RUN_BENCHMARK_SCRIPT := $(SCRIPTS_ROOT_DIR)/runBenchmark.py
+COLLECT_MEMORY_FOOTPRINT_SCRIPT := $(SCRIPTS_ROOT_DIR)/collectMemoryFootprint.py
 
 ###### global constants
 
@@ -62,6 +63,18 @@ TEST_RUN_MOSALLOC_TOOL := $(SCRIPTS_ROOT_DIR)/testRunMosallocTool.sh
 .PHONY: test-run-mosalloc-tool
 test-run-mosalloc-tool: $(RUN_MOSALLOC_TOOL) $(MOSALLOC_TOOL)
 	$(TEST_RUN_MOSALLOC_TOOL) $<
+
+#### recipes and rules for calculating the benchmark memory footprint
+
+MEMORY_FOOTPRINT_FILE := $(MODULE_NAME)/memory_footprint.csv
+
+$(MEMORY_FOOTPRINT_FILE): | experiments/single_page_size/layout4kb
+	$(COLLECT_MEMORY_FOOTPRINT_SCRIPT) $| --output=$@
+
+$(MODULE_NAME)/clean:
+	rm -f $(MEMORY_FOOTPRINT_FILE)
+
+### include common makefile
 
 include $(ROOT_DIR)/common.mk
 

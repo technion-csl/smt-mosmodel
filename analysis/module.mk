@@ -1,6 +1,5 @@
 MODULE_NAME := analysis
 SUBMODULES := \
-	memory_footprint \
 	growing_window_2m \
 	random_window_2m \
 	sliding_window \
@@ -14,7 +13,6 @@ SCATTER_PLOT_SCRIPT := $(MODULE_NAME)/plotScatter.gp
 WHISKER_PLOT_SCRIPT := $(MODULE_NAME)/plotWhisker.gp
 POLY_PLOT_SCRIPT := $(MODULE_NAME)/assessPolynomialModels.py
 BUILD_OVERHEAD_SCRIPT := $(MODULE_NAME)/buildOverheadSummary.py
-COLLECT_MEMORY_FOOTPRINT := $(ROOT_DIR)/$(MODULE_NAME)/collectMemoryFootprint.py
 
 COMMON_ANALYSIS_MAKEFILE := $(MODULE_NAME)/common.mk
 
