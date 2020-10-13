@@ -16,6 +16,7 @@ def getAddress(strAddr):
 
 def applyBins(df, pid, bin_width,
         anon_start, anon_end, brk_start, brk_end, file_start, file_end):
+    print(df[df['ADDR']>brk_start])
     anon_mask = (df['PID'] == pid) & (df['ADDR'] >= anon_start) & (df['ADDR'] < anon_end)
     brk_mask = (df['PID'] == pid) & (df['ADDR'] >= brk_start) & (df['ADDR'] < brk_end)
     file_mask = (df['PID'] == pid) & (df['ADDR'] >= file_start) & (df['ADDR'] < file_end)
@@ -46,6 +47,7 @@ args = parser.parse_args()
 
 df = pd.read_csv(args.input_file, delimiter=';',
                  converters={' ADDR': lambda x: getAddress(x)})
+print(df)
 df.columns = ['PID', 'TID', 'IP', 'ADDR', 'LOCAL WEIGHT', 'DSRC', 'SYMBOL']
 df['NUM_ACCESSES'] = 1
 df['PAGE_TYPE'] = 'unkown'

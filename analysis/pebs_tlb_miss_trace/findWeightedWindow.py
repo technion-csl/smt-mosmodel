@@ -37,24 +37,16 @@ elif args.page_size == '1GB':
     page_size = 1 << 30
 actual_total_pages = math.floor(int(args.memory_footprint) / page_size)
 
-#print('[DEBUG]: actual_total_pages = ', str(actual_total_pages))
-#print('[DEBUG]: max page number = ' + str(df['PAGE_NUMBER'].max()))
-
 cummulative_arr = [0] * actual_total_pages
 for index, row in df.iterrows():
     i = row['PAGE_NUMBER']
-    if i < actual_total_pages: #TODO: debug why in mcf trace there is some page beyond the benchmark footprint (1525 > 888)
+    if i < actual_total_pages:
         cummulative_arr[row['PAGE_NUMBER']] = row['NUM_ACCESSES']
 for i in range(len(cummulative_arr)):
     if i > 0:
         cummulative_arr[i] += cummulative_arr[i-1]
 
-#TODO: debug why in mcf trace there is some page beyond the benchmark footprint (1525 > 888)
-#assert(cummulative_arr[len(cummulative_arr) - 1] == total_access)
-
-#print('[DEBUG]: actual_total_pages = ', str(actual_total_pages))
 def sumAccesses(from_page, to_page):
-    #print('[DEBUG]: sumAccesses(' + str(from_page) + ' , ' + str(to_page) + ')')
     if from_page == 0:
         return cummulative_arr[to_page]
     return cummulative_arr[to_page] - cummulative_arr[from_page-1]

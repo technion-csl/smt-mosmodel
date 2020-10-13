@@ -1,9 +1,0 @@
-MODULE_NAME := experiments/perf_mem/pebs_address_trace
-SUBMODULES :=
-
-include $(PERF_MEM_EXP_COMMON_MAKEFILE)
-
-$(MODULE_NAME)%: PERF_MEM_EVENTS := $(PERF_MEM_ACCESSES_EVENTS)
-$(MODULE_NAME)%: MOSALLOC_POOLS_ARGS := -fps 1GB -bps $(MEMORY_FOOTPRINT) -aps $(MEMORY_FOOTPRINT)
-
-include $(ROOT_DIR)/common.mk

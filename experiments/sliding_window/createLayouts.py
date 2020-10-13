@@ -52,9 +52,8 @@ brk_footprint = footprint_df['brk-max'][0]
 
 hot_region_brk_start = conf_row['brk-start'].iloc[0]
 hot_region_brk_size = conf_row['brk-length'].iloc[0]
-brk_ratio = brk_footprint / hot_region_brk_size
-window_start = round_down((int(hot_region_start * brk_ratio)), standard_page_size)
-raw_window_length = round_up(int(hot_region_length * brk_ratio), standard_page_size)
+window_start = round_down(hot_region_start, standard_page_size)
+raw_window_length = round_up(hot_region_length, standard_page_size)
 window_length = round_up(raw_window_length, window_page_size)
 
 window_end = window_start + window_length

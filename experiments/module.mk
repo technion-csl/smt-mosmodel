@@ -2,6 +2,7 @@ MODULE_NAME := experiments
 SUBMODULES := \
 	without_mosalloc \
 	single_page_size \
+	pebs_tlb_miss_trace \
 	growing_window_2m \
 	random_window_2m \
 	sliding_window

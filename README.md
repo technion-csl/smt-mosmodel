@@ -20,5 +20,8 @@ After
 - Python3
 
 # Technical Details
-Mosmodel assumes that the benchmark allocates < 100MB through `mmap()`. In case your benchmark allocates more than 100MB, please increase the `MMAP_POOL_LIMIT` in benchmark.mk
-Mosmodel scans only Mosalloc layouts on the `brk()` pool because it assumes that the benchmark allocates memory through `malloc()`. In case your benchmark uses different allocators (than glibc `malloc()`), please update the TODO script, which creates the Mosalloc layouts.
+- Mosmodel assumes that the benchmark allocates < 100MB through `mmap()`. In case your benchmark allocates more than 100MB, please increase the `MMAP_POOL_LIMIT` in benchmark.mk
+- Mosmodel uses Intel PEBS to find interesting Mosalloc layouts. PEBS only works on Intel Broadwell processors or newer.
+
+# TODO
+Currently, Mosmodel scans only Mosalloc layouts on the `brk()` pool because it assumes that the benchmark allocates memory through `malloc()`. In case the benchmark uses different allocators (than glibc `malloc()`), then this assumption may not hold. We need to customize the python scripts and makefile infrastructure that create the Mosalloc layouts. The first step toward this goal is running the `mmap_vs_brk` experiments to measure the performance impact of hugepages in the `mmap()` and `brk()` pools, respectively. 
