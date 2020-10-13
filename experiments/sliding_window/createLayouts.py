@@ -85,24 +85,24 @@ conf_prefix = str.format('-fps 1GB -aps {0} -bps {1}',
 step_size = math.floor(raw_window_length / (args.num_layouts-1))
 step_size = round_up(step_size, 4*kb)
 
-layouts = ''
-conf_line_format = '{0} -bs2 {1} -be2 {2} -bs1 {3} -be1 {4}\n'
+layouts = []
+conf_line_format = '{0} -bs2 {1} -be2 {2} -bs1 {3} -be1 {4}'
 if args.use_1gb_pages:
-    conf_line_format = '{0} -bs1 {1} -be1 {2} -bs2 {3} -be2 {4}\n'
+    conf_line_format = '{0} -bs1 {1} -be1 {2} -bs2 {3} -be2 {4}'
 for i in range(0, args.num_layouts):
     config = str.format(conf_line_format,
             conf_prefix,
             start_offset, (start_offset + window_length),
             0, 0)
-    layouts += config
+    layouts += [config]
     start_offset += step_size
 
 # prefix each configuration with layoutX: where X is the layout number
 for i in range(len(layouts)):
-    layouts[i] = 'layout' +str(i+1) + ': ' + layouts[i]
+    layouts[i] = 'layout' + str(i+1) + ': ' + layouts[i]
 
 with open(args.output, 'w') as output_fid:
-    print(layouts, file=output_fid)
+    print('\n'.join(layouts), file=output_fid)
 
 
 

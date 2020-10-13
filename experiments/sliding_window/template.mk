@@ -8,7 +8,7 @@ $(LAYOUTS_FILE): $(HOT_REGIONS_FILE) $(MEMORY_FOOTPRINT_FILE)
 	$(CREATE_SLIDING_WINDOW_LAYOUTS_SCRIPT) \
 		--weight=$(WEIGHT) \
 		--memory_footprint=$(MEMORY_FOOTPRINT_FILE) \
-		--hot_region=$(HOT_REGION_FILE) \
+		--hot_region=$(HOT_REGIONS_FILE) \
 		--num_layouts=$(NUM_LAYOUTS) \
 		--output=$@
 

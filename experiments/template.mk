@@ -30,6 +30,7 @@ $(EXPERIMENT_DIR): $(MEASUREMENTS)
 $(EXPERIMENTS): $(EXPERIMENT_DIR)/layout%: $(foreach repeat,$(REPEATS),$(addsuffix /$(repeat)/perf.out,$(EXPERIMENT_DIR)/layout%))
 $(EXPERIMENT_REPEATS): %: %/perf.out
 
+$(MEASUREMENTS): EXTRA_ARGS_FOR_MOSALLOC := $(EXTRA_ARGS_FOR_MOSALLOC)
 $(MEASUREMENTS): $(EXPERIMENT_DIR)/layout%: $(LAYOUTS_FILE) $(MOSALLOC_TOOL)
 	mkdir -p $(dir $@)
 	cd $(dir $@)
