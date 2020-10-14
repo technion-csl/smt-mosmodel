@@ -14,11 +14,11 @@ def getAddress(strAddr):
     except Exception:
         return 0
 
-def applyBins(df, pid, bin_width,
+def applyBins(df, pid, tid, bin_width,
         anon_start, anon_end, brk_start, brk_end, file_start, file_end):
-    anon_mask = (df['PID'] == pid) & (df['ADDR'] >= anon_start) & (df['ADDR'] < anon_end)
-    brk_mask = (df['PID'] == pid) & (df['ADDR'] >= brk_start) & (df['ADDR'] < brk_end)
-    file_mask = (df['PID'] == pid) & (df['ADDR'] >= file_start) & (df['ADDR'] < file_end)
+    anon_mask = (df['PID'] == pid) & (df['TID'] == tid) & (df['ADDR'] >= anon_start) & (df['ADDR'] < anon_end)
+    brk_mask = (df['PID'] == pid) & (df['TID'] == tid) & (df['ADDR'] >= brk_start) & (df['ADDR'] < brk_end)
+    file_mask = (df['PID'] == pid) & (df['TID'] == tid) & (df['ADDR'] >= file_start) & (df['ADDR'] < file_end)
     df.loc[anon_mask, 'ADDR'] -= anon_start
     df.loc[anon_mask, 'ADDR'] /= bin_width
     df.loc[anon_mask, 'PAGE_TYPE'] = 'anon'
@@ -48,27 +48,28 @@ df = pd.read_csv(args.input_file, delimiter=';',
                  converters={' ADDR': lambda x: getAddress(x)})
 df.columns = ['PID', 'TID', 'IP', 'ADDR', 'LOCAL WEIGHT', 'DSRC', 'SYMBOL']
 df['NUM_ACCESSES'] = 1
-df['PAGE_TYPE'] = 'unkown'
-df = df[['PID', 'ADDR','NUM_ACCESSES', 'PAGE_TYPE']]
+df['PAGE_TYPE'] = 'unknown'
+df = df[['PID', 'TID', 'ADDR','NUM_ACCESSES', 'PAGE_TYPE']]
 
-pools_df=pd.read_csv(args.pools_range_file, index_col='pid')
-pids=pools_df.index.values
-for pid in pids:
-    p=pools_df.loc[pid]
-    applyBins(df, pid, args.width,
-            getAddress(p['anon-mmap-start']), getAddress(p['anon-mmap-end']),
-            getAddress(p['brk-start']), getAddress(p['brk-end']),
-            getAddress(p['file-mmap-start']), getAddress(p['file-mmap-end']))
+pools_df=pd.read_csv(args.pools_range_file)
+for index, row in pools_df.iterrows():
+    applyBins(df, row['pid'], row['tid'], args.width,
+            getAddress(row['anon-mmap-start']), getAddress(row['anon-mmap-end']),
+            getAddress(row['brk-start']), getAddress(row['brk-end']),
+            getAddress(row['file-mmap-start']), getAddress(row['file-mmap-end']))
 
 df['ADDR'] = df['ADDR'].astype(int)
-df.columns= ['PID', 'PAGE_NUMBER','NUM_ACCESSES', 'PAGE_TYPE']
-df_g=df.groupby(['PID', 'PAGE_NUMBER', 'PAGE_TYPE'], sort=False).size().rename('NUM_ACCESSES').reset_index()
+df.columns = ['PID', 'TID', 'PAGE_NUMBER','NUM_ACCESSES', 'PAGE_TYPE']
+df_g = df.groupby(['PID', 'TID', 'PAGE_NUMBER', 'PAGE_TYPE'], sort=False).size().rename('NUM_ACCESSES').reset_index()
 df_g.sort_values('NUM_ACCESSES', ascending=False, inplace=True)
 
 #Write each process results to separate file and plot it
-for pid in pids:
+for index, row in pools_df.iterrows():
+    pid = row['pid']
+    tid = row['tid']
     df_g_pid = df_g[df_g['PID']==pid]
-    output_file = args.output_file + '.' + str(pid)
+    df_g_pid = df_g_pid[df_g_pid['TID']==tid]
+    output_file = args.output_file + '.pid-' + str(pid) + '.tid-' + str(tid)
     writeDataframeToCsv(df_g_pid, output_file)
 
 df_g = df_g[['PAGE_NUMBER','NUM_ACCESSES', 'PAGE_TYPE']]

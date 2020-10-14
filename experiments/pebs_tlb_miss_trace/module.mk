@@ -16,6 +16,10 @@ $(PEBS_TLB_MISS_TRACE_OUTPUT): $(MOSALLOC_TOOL) experiments/single_page_size/lay
 
 DELETE_TARGETS := $(addsuffix /delete,$(PEBS_TLB_MISS_TRACE_OUTPUT))
 
-$(MODULE_NAME)/clean: $(DELETE_TARGETS)
+$(MODULE_NAME)/clean:
+	rm -f $(PEBS_TLB_MISS_TRACE_OUTPUT)
+	cd $(dir $@)
+	rm -f *csv*
+	rm -f *.out
 
 
