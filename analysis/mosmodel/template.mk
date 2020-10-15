@@ -7,8 +7,9 @@ WHISKER_CSV_FILE := $(MODULE_NAME)/whisker.csv
 REPEATS_CSV_FILE := $(MODULE_NAME)/all_repeats.csv
 MEAN_CSV_FILE := $(MODULE_NAME)/mean.csv
 
-MODEL_EXPERIMENTS := $(addprefix analysis/,$(MODEL_EXPERIMENTS))
 MODEL_MEAN_CSV_FILES := $(addsuffix /mean.csv,$(MODEL_EXPERIMENTS))
+MODEL_MEAN_CSV_FILES := $(addprefix results/,$(MODEL_MEAN_CSV_FILES))
+MODEL_EXPERIMENTS := $(addprefix analysis/,$(MODEL_EXPERIMENTS))
 MODEL_SCATTER_CSV_FILES := $(addsuffix /scatter.csv,$(MODEL_EXPERIMENTS))
 MODEL_WHISKER_CSV_FILES := $(addsuffix /whisker.csv,$(MODEL_EXPERIMENTS))
 MODEL_ALL_REPEATS_CSV_FILES := $(addsuffix /all_repeats_scatter.csv,$(MODEL_EXPERIMENTS))

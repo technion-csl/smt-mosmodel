@@ -1,5 +1,6 @@
 MODULE_NAME := analysis/mosmodel
 SUBMODULES := test train 
+SUBMODULES := $(addprefix $(MODULE_NAME)/,$(SUBMODULES))
 
 MOSMODEL_TEMPLATE_MAKEFILE := $(MODULE_NAME)/template.mk
 
@@ -84,3 +85,4 @@ $(MODULE_NAME)/clean:
 	rm -f *.pdf
 	rm -f *.csv
 
+include $(ROOT_DIR)/common.mk
