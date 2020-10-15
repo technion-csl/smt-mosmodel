@@ -5,7 +5,8 @@ SUBMODULES := \
 	sliding_window \
 	linear_models_coeffs \
 	pebs_tlb_miss_trace \
-	random_window_1g #\
+	random_window_1g \
+	mosmodel #\
 	train_mosmodel test_mosmodel all_data \
 	tlb_misses_vs_table_walks \
 	single_page_size model_errors perf_mem

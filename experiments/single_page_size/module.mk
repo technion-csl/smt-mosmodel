@@ -3,7 +3,6 @@ LAYOUTS := layout1gb layout2mb layout4kb
 
 EXTRA_ARGS_FOR_MOSALLOC := --analyze
 
-#include $(ROOT_DIR)/common.mk
 include $(EXPERIMENTS_TEMPLATE)
 
 CREATE_SINGLE_PAGE_LAYOUTS_SCRIPT := $(MODULE_NAME)/createLayouts.py

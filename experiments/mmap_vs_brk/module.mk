@@ -22,8 +22,3 @@ export BRK_HUGE_PAGES := $$(( $(BRK_POOL_SIZE) / $(HUGE_PAGE_SIZE) ))
 
 include $(ROOT_DIR)/common.mk
 
-.PHONY: find-interesting
-WALK_OVERHEAD_ANALYSIS := analysis/general_metrics/glibc_malloc/walk_overhead.txt
-find-interesting: $(WALK_OVERHEAD_ANALYSIS)
-	cat $< | tr -s " " | cut -f2 -d" " | tail -n +2 > $(INTERESTING_BENCHMARKS_FILE)
-

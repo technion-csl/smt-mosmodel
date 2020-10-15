@@ -12,10 +12,10 @@ def loadDataframe(mean_file, output):
     mean_df['walk_cycles'] = mean_ps.getWalkDuration()
     mean_df['stlb_hits'] = mean_ps.getStlbHits()
     mean_df['stlb_misses'] = mean_ps.getStlbMisses()
-    df = mean_df[['configuration', 'walk_cycles', 'stlb_hits', 'stlb_misses', 'cpu-cycles']]
+    df = mean_df[['layout', 'walk_cycles', 'stlb_hits', 'stlb_misses', 'cpu-cycles']]
     # drop duplicated rows
     important_columns = list(df.columns)
-    important_columns.remove('configuration')
+    important_columns.remove('layout')
     #df.drop_duplicates(inplace=True, subset=important_columns)
     df = df.drop_duplicates(subset=important_columns)
     df.to_csv(output)

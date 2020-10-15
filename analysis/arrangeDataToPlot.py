@@ -26,14 +26,14 @@ def readSingle(mean_file, std_file, y_metric, x_metric):
     else:
         raise Exception('Unknown x-metric: ' + x_metric)
 
-    mean_ps = PerformanceStatistics(mean_file, 'configuration')
+    mean_ps = PerformanceStatistics(mean_file, 'layout')
     mean_df = mean_ps.getDataFrame()
     mean_df[x_metric] = metric_func(mean_ps)
     mean_df = mean_df[[x_metric, y_metric]]
 
     std_df = pd.DataFrame()
     if std_file:
-        std_ps = PerformanceStatistics(std_file, 'configuration')
+        std_ps = PerformanceStatistics(std_file, 'layout')
         std_df = std_ps.getDataFrame()
         std_df[y_metric+'_std'] = std_df[y_metric]
         std_df[x_metric+'_std'] = metric_func(std_ps)

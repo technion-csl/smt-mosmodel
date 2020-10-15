@@ -1,9 +1,0 @@
-#[page_number],[num_pages],[window_accesses_weight],[pool-start-byte],[pool-length-bytes]
-window-start,window-length,window-weight,left-side-weight,right-side-weight,brk-start,brk-length
-1100787,43450,80,13,6,0,4805738496
-1100644,33693,60,12,27,0,4805738496
-1100644,13344,50,12,37,0,4805738496
-1101152,10683,40,14,45,0,4805738496
-1101124,7984,30,14,55,0,4805738496
-1103601,5406,20,24,55,0,4805738496
-

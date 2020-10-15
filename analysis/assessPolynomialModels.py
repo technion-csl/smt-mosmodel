@@ -17,7 +17,7 @@ parser.add_argument('-x', '--x_metric', default='walk_cycles',
                     help='the metric to use on X-axis (e.g., walk_cycles/tlb-misses)')
 args = parser.parse_args()
 
-df = pd.read_csv(args.input_file, index_col='configuration')
+df = pd.read_csv(args.input_file, index_col='layout')
 x = df[[args.x_metric]]
 y = df[args.metric]
 
