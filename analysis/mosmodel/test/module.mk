@@ -1,8 +1,6 @@
 MODULE_NAME := analysis/mosmodel/test
 SUBMODULES := 
 
-MOSMODEL_TEST_MEAN_CSV_FILE := $(MODULE_NAME)/mean.csv
-
-MODEL_EXPERIMENTS := growing_window_2m random_window_2m sliding_window/window_20 sliding_window/window_40 sliding_window/window_60 sliding_window/window_80
+MODEL_EXPERIMENTS := random_window_2m
 
 include $(MOSMODEL_TEMPLATE_MAKEFILE)

@@ -10,4 +10,7 @@ $(MOSMODEL_CHART_FILE): $(MOSMODEL_TEST_MEAN_CSV_FILE) $(MOSMODEL_TRAIN_MEAN_CSV
 
 $(MODULE_NAME)/clean:
 	rm -f $(MOSMODEL_CHART_FILE)
+	cd $(dir $@)
+	rm -f *.csv
+	rm -f *.pdf
 

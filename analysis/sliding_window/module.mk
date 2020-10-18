@@ -1,10 +1,15 @@
 ANALYSIS_SLIDING_WINDOW_MODULE_NAME := analysis/sliding_window
 SUBMODULES := 
 
+ANALYSIS_SLIDING_WINDOW_SUBMODULES := $(foreach weight,$(SLIDING_WINDOW_WEIGHTS),$(addprefix $(ANALYSIS_SLIDING_WINDOW_MODULE_NAME)/window_,$(weight)))
+$(ANALYSIS_SLIDING_WINDOW_MODULE_NAME): $(ANALYSIS_SLIDING_WINDOW_SUBMODULES)
+
 define analysis-sliding-makefiles
-SLIDING_WINDOW_WEIGHT := $(1)
-include $(ANALYSIS_SLIDING_WINDOW_MODULE_NAME)/template.mk
+MODULE_NAME := $(1)
+include $(COMMON_ANALYSIS_MAKEFILE)
 endef
 
-$(foreach w,$(SLIDING_WINDOW_WEIGHTS),$(eval $(call analysis-sliding-makefiles,$(w))))
+$(foreach m,$(ANALYSIS_SLIDING_WINDOW_SUBMODULES),$(eval $(call analysis-sliding-makefiles,$(m))))
 
+$(ANALYSIS_SLIDING_WINDOW_MODULE_NAME)/clean:
+	rm -rf $(ANALYSIS_SLIDING_WINDOW_SUBMODULES)

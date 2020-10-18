@@ -32,6 +32,7 @@ $(EXPERIMENT_REPEATS): %: %/perf.out
 
 $(MEASUREMENTS): EXTRA_ARGS_FOR_MOSALLOC := $(EXTRA_ARGS_FOR_MOSALLOC)
 $(MEASUREMENTS): $(EXPERIMENT_DIR)/layout%: $(LAYOUTS_FILE) $(MOSALLOC_TOOL)
+	echo ========== [INFO] start producing: $@ ==========
 	mkdir -p $(dir $@)
 	cd $(dir $@)
 	ARGS_FOR_MOSALLOC="$(shell grep layout"$(shell echo $* | cut -d '/' -f 1)" $< | cut -d ':' -f 2)"

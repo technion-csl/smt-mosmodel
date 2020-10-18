@@ -54,7 +54,7 @@ outliers = variation > outlier_threshold
 if outliers.any().any():
     print("Error: the results in", args.experiments_root, "showed considerable variation:")
     print(outliers)
-    sys.exit('Cells marked with True are the outliers.')
+    #sys.exit('Cells marked with True are the outliers.')
 
 # if there are no outliers, write the aggregated results
 writeDataframeToCsv(df, output_dir + 'all_repeats.csv')

@@ -1,3 +1,5 @@
+# MODEL_EXPERIMENTS should be set before calling this template
+
 R_SQUARES := $(MODULE_NAME)/r_squares.csv
 SCATTER_CHART := $(MODULE_NAME)/scatter.pdf
 WHISKER_CHART := $(MODULE_NAME)/whisker.pdf
@@ -14,7 +16,7 @@ MODEL_SCATTER_CSV_FILES := $(addsuffix /scatter.csv,$(MODEL_EXPERIMENTS))
 MODEL_WHISKER_CSV_FILES := $(addsuffix /whisker.csv,$(MODEL_EXPERIMENTS))
 MODEL_ALL_REPEATS_CSV_FILES := $(addsuffix /all_repeats_scatter.csv,$(MODEL_EXPERIMENTS))
 
-TARGETS := $(SCATTER_CHART) $(WHISKER_CHART) $(REPEATS_CHART) $(SCATTER_CSV_FILE) $(REPEATS_CSV_FILE) $(MEAN_CSV_FILE) $(R_SQUARES)
+TARGETS := $(SCATTER_CHART) $(WHISKER_CHART) $(REPEATS_CHART) $(SCATTER_CSV_FILE) $(REPEATS_CSV_FILE) $(MEAN_CSV_FILE) $(R_SQUARES) $(WHISKER_CSV_FILE)
 
 $(MODULE_NAME): $(TARGETS)
 
@@ -22,7 +24,7 @@ $(SCATTER_CHART): $(SCATTER_CSV_FILE)
 	legend=`echo $(MODEL_EXPERIMENTS) | sed -e 's,_window,,g' | sed -e 's,_,-,g'`
 	gnuplot -e "input_file='$^'" -e "output_file='$@'" -e "legend='$$legend'" $(SCATTER_PLOT_SCRIPT)
 
-$(SCATTER_CSV): $(MODEL_SCATTER_CSV_FILES) 
+$(SCATTER_CSV_FILE): $(MODEL_SCATTER_CSV_FILES) 
 	head -n 1 -q $< > $@
 	tail -n +2 -q $^ >> $@
 
@@ -40,12 +42,12 @@ $(WHISKER_CSV_FILE): $(MODEL_WHISKER_CSV_FILES)
 	head -n 1 -q $< > $@
 	tail -n +2 -q $^ >> $@
 
-$(MEAN_CSV_FILE): $(MODEL_MEAN_CSV_FILES)_
-	head -n 1 -q $< $@
+$(MEAN_CSV_FILE): $(MODEL_MEAN_CSV_FILES)
+	head -n 1 -q $< > $@
 	tail -n +2 -q $^ >> $@
 
-$(R_SQUARES): $(MEAN_CSV_FILES)
-	$(CALCULATE_R_SQUARES_SCRIPT) --output=$@
+$(R_SQUARES): $(MEAN_CSV_FILE)
+	$(CALCULATE_R_SQUARES_SCRIPT) --input=$< --output=$@
 
 DELETE_TARGETS := $(addsuffix /delete,$(TARGETS))
 $(MODULE_NAME)/clean: $(DELETE_TARGETS)

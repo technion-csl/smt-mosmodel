@@ -1,4 +1,7 @@
-export BENCHMARK := $(ROOT_DIR)/gups.py
+export BENCHMARK := /home/a.mohammad/git-repos/mosmodel/graph_2gb/run.sh
+ifndef BENCHMARK
+	$(error "BENCHMARK environment variable is not defined!")
+endif
 
 # some constants
 export KIBI := $$(( 1024 ))

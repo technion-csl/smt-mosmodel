@@ -73,7 +73,7 @@ res_df = pd.DataFrame(columns=['layout', 'basu_error', 'alam_error', 'pham_error
 for i in test_df.index.values:
     layout = test_df.loc[i]['layout']
     basu_err = calculateBasuError(test_df, coeffs['basu_A'][0], \
-            coeffs.['basu_B'][0], i)
+            coeffs['basu_B'][0], i)
     alam_err = calculateAlamError(test_df, coeffs['alam_B'][0], i)
     pham_err = calculatePhamError(test_df, coeffs['pham_B'][0], i)
     gandhi_err = calculateGandhiError(test_df, coeffs['gandhi_A'][0], \

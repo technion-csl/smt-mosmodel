@@ -21,14 +21,14 @@ def loadDataframe(mean_file):
 
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument('-m', '--mean_file', default='mean.csv',
+parser.add_argument('-i', '--input', default='mean.csv',
                     help='the mean file to be used for calculating the R-squares')
 parser.add_argument('-o', '--output',  default='r_squares.csv')
 args = parser.parse_args()
 
 from sklearn.linear_model import LinearRegression
 res_df = pd.DataFrame(columns=['C', 'M', 'H'])
-df = loadDataframe(args.mean_file)
+df = loadDataframe(args.input)
 
 linear_regressor = LinearRegression(fit_intercept=True)
 

@@ -40,18 +40,22 @@ $(WHISKER_CHART): $(WHISKER_FILE)
 	fi
 
 $(NORMALIZED_SCATTER_FILE): analysis/%/normalized_scatter.csv: results/%/mean.csv
+	mkdir -p $(dir $@)
 	$(ARRANGE_DATA_TO_PLOT_SCRIPT) --normalize='by-y' --y-metric='cpu-cycles' \
 		--mean_file=$< --output=$@
 
 $(SCATTER_FILE): analysis/%/scatter.csv: results/%/mean.csv
+	mkdir -p $(dir $@)
 	$(ARRANGE_DATA_TO_PLOT_SCRIPT) --y-metric='cpu-cycles' \
 		--mean_file=$< --output=$@
 
 $(WHISKER_FILE): analysis/%/whisker.csv: results/%/mean.csv results/%/std.csv
+	mkdir -p $(dir $@)
 	$(ARRANGE_DATA_TO_PLOT_SCRIPT) --normalize='by-y' --y-metric='cpu-cycles' \
 		--mean_file=$(word 1,$^) --std_file=$(word 2,$^) --output=$@
 
 $(ALL_REPEATS_SCATTER_FILE): analysis/%/all_repeats_scatter.csv: results/%/all_repeats.csv
+	mkdir -p $(dir $@)
 	$(ARRANGE_DATA_TO_PLOT_SCRIPT) --y-metric='cpu-cycles' \
 		--mean_file=$< --output=$@
 
