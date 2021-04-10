@@ -1,4 +1,5 @@
-export BENCHMARK := /home/a.mohammad/git-repos/mosmodel/graph_2gb/run.sh
+export BENCHMARKS_ROOT := $(ROOT_DIR)/benchmark
+export BENCHMARK := $(BENCHMARKS_ROOT)/run.sh
 ifndef BENCHMARK
 	$(error "BENCHMARK environment variable is not defined!")
 endif

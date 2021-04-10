@@ -37,15 +37,18 @@ endef
 
 #### recipes and rules for prerequisites
 
-$(MOSALLOC_TOOL): $(MOSALLOC_MAKEFILE)
+.PHONY: experiments-prerequisites perf numactl cmake
+
+$(MOSALLOC_TOOL): $(MOSALLOC_MAKEFILE) | cmake
 	cd $(dir $<)
 	cmake .
 	make
 
+cmake:
+	$(QUERY_PACKAGES_SCRIPT) cmake
+
 $(MOSALLOC_MAKEFILE):
 	git submodule update --init --progress
-
-.PHONY: experiments-prerequisites perf numactl
 
 experiments-prerequisites: perf numactl
 

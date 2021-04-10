@@ -1,0 +1,106 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+num_of_sockets = ENV["NUMBER_OF_SOCKETS"].to_i
+num_of_cores_per_socket = ENV["NUMBER_OF_CORES_PER_SOCKET"].to_i
+memory_per_socket_mb = ENV["MEMORY_PER_SOCKET_MB"]
+
+# All Vagrant configuration is done below. The "2" in Vagrant.configure
+# configures the configuration version (we support older styles for
+# backwards compatibility). Please don't change it unless you know what
+# you're doing.
+Vagrant.configure("2") do |config|
+  # The most common configuration options are documented and commented below.
+  # For a complete reference, please see the online documentation at
+  # https://docs.vagrantup.com.
+
+  # Idan: change the VM file name on disk
+  config.vm.define ENV["HOST_NAME"]
+  # Idan: set the "hostname" inside the guest VM
+  config.vm.hostname = "guest-" + ENV["HOST_NAME"]
+
+  # Every Vagrant development environment requires a box. You can search for
+  # boxes at https://vagrantcloud.com/search.
+  config.vm.box = "generic/ubuntu1804"
+
+  # Disable automatic box update checking. If you disable this, then
+  # boxes will only be checked for updates when the user runs
+  # `vagrant box outdated`. This is not recommended.
+  # config.vm.box_check_update = false
+
+  # Create a forwarded port mapping which allows access to a specific port
+  # within the machine from a port on the host machine. In the example below,
+  # accessing "localhost:8080" will access port 80 on the guest machine.
+  # NOTE: This will enable public access to the opened port
+  # config.vm.network "forwarded_port", guest: 80, host: 8080
+
+  # Create a forwarded port mapping which allows access to a specific port
+  # within the machine from a port on the host machine and only allow access
+  # via 127.0.0.1 to disable public access
+  # config.vm.network "forwarded_port", guest: 80, host: 8080, host_ip: "127.0.0.1"
+
+  # Create a private network, which allows host-only access to the machine
+  # using a specific IP.
+  # config.vm.network "private_network", ip: "192.168.33.10"
+
+  # Create a public network, which generally matched to bridged network.
+  # Bridged networks make the machine appear as another physical device on
+  # your network.
+  # config.vm.network "public_network"
+
+  # Share an additional folder to the guest VM. The first argument is
+  # the path on the host to the actual folder. The second argument is
+  # the path on the guest to mount the folder. And the optional third
+  # argument is a set of non-required options.
+  config.vm.synced_folder ENV["ROOT_DIR"], ENV["ROOT_DIR"], type: "nfs"
+  # We use rsync to copy the benchmarks into the guest because mounting the NFS share inside the guest
+  # is complicated. Read more at: https://www.vagrantup.com/docs/synced-folders/rsync.html
+  config.vm.synced_folder ENV["BENCHMARKS_ROOT"], ENV["BENCHMARKS_ROOT"], type: "nfs"
+#rsync__exclude: ["spec_cpu2006/", "spec_cpu2017/", "gapbs/", "src/", "download/", "build/", "test/"]
+
+  # Provider-specific configuration so you can fine-tune various
+  # backing providers for Vagrant. These expose provider-specific options.
+  # Example for VirtualBox:
+  #
+  # config.vm.provider "virtualbox" do |vb|
+  #   # Display the VirtualBox GUI when booting the machine
+  #   vb.gui = true
+  #
+  #   # Customize the amount of memory on the VM:
+  #   vb.memory = "1024"
+  # end
+  #
+  # View the documentation for the provider you are using for more
+  # information on available options.
+  config.vm.provider :libvirt do |libvirt|
+    libvirt.cpus = num_of_sockets * num_of_cores_per_socket
+    libvirt.cputopology :sockets => num_of_sockets.to_s, :cores => num_of_cores_per_socket, :threads => '1'
+    # We should prefer "host-model" over "host-passthrough" because the latter ignores
+    # the numa_nodes specification and sets the number of cores to the number of CPUs.
+    # libvirt.cpu_mode = "host-model"
+    libvirt.cpu_mode = "host-passthrough"
+    libvirt.cpu_fallback = "forbid"
+    # For some reason libvirt doesn't set these features in the guest... We should check it again in the future.
+    libvirt.cpu_feature :name => "acpi", :policy => "require"
+    libvirt.cpu_feature :name => "arch_perfmon", :policy => "require"
+    libvirt.cpu_feature :name => "aperfmperf", :policy => "require"
+    libvirt.numa_nodes = []
+    (0..num_of_sockets-1).each do |i|
+      first_cpu = i * num_of_cores_per_socket
+      last_cpu = (i+1) * num_of_cores_per_socket - 1
+      cpu_range = first_cpu.to_s + "-" + last_cpu.to_s
+      memory_per_node = (0.8 * memory_per_socket_mb.to_i).to_s # in MBs
+      libvirt.numa_nodes << {:cpus => cpu_range, :memory => memory_per_node}
+    end
+    #libvirt.memory = 96*1024 # overriden if numa_nodes is defined below
+    #libvirt.numa_nodes = [
+    #  {:cpus => "0-3", :memory => "49152"}, # in MBs
+    #  {:cpus => "4-7", :memory => "49152"}
+    #]
+  end
+
+  # Enable provisioning with a shell script. Additional provisioners such as
+  # Puppet, Chef, Ansible, Salt, and Docker are also available. Please see the
+  # documentation for more information about their specific syntax and use.
+  config.vm.provision :shell, path: "bootstrap.sh"
+end

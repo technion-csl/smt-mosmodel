@@ -7,7 +7,8 @@ SUBMODULES := \
 	pebs_tlb_miss_trace \
 	random_window_1g \
 	mosmodel \
-	all_data #\
+	all_data \
+	single_page_size #\
 	train_mosmodel test_mosmodel all_data \
 	tlb_misses_vs_table_walks \
 	single_page_size model_errors perf_mem
