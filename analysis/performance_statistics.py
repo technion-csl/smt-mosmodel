@@ -188,5 +188,13 @@ class PerformanceStatistics:
             raise Exception('the data-set has no performance counters for CPU cycles!')
         return 0
 
+    def getRefCycles(self, index=None):
+        data_set = self.__getDataSet(index)
+        if self._df.columns.contains('ref-cycles'):
+            return data_set['ref-cycles']
+        else:
+            raise Exception('the data-set has no performance counters for ref cycles!')
+        return 0
+
     def getDataFrame(self):
         return self._df.copy()
