@@ -25,6 +25,8 @@ try:
 except KeyError:
     sys.exit('Error: could not parse the --layouts argument')
 
+single_layout = True if len(layout_list) == 1 else False
+
 # build the output directory
 import os
 if not os.path.exists(args.output_dir):
@@ -37,7 +39,8 @@ for repeat in range(1, args.repeats+1):
     experiment_list = ExperimentList(layout_list, args.experiments_root)
     df = experiment_list.collect(repeat)
     csv_file_name = 'repeat' + str(repeat) + '.csv'
-    writeDataframeToCsv(df, output_dir + csv_file_name)
+    if not single_layout:
+        writeDataframeToCsv(df, output_dir + csv_file_name)
     dataframe_list.append(df)
 
 df = pd.concat(dataframe_list)
@@ -57,7 +60,8 @@ if outliers.any().any():
     #sys.exit('Cells marked with True are the outliers.')
 
 # if there are no outliers, write the aggregated results
-writeDataframeToCsv(df, output_dir + 'all_repeats.csv')
 writeDataframeToCsv(mean_df, output_dir + 'mean.csv')
-writeDataframeToCsv(std_df, output_dir + 'std.csv')
+if not single_layout:
+    writeDataframeToCsv(df, output_dir + 'all_repeats.csv')
+    writeDataframeToCsv(std_df, output_dir + 'std.csv')
 
