@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-
-kb = 1024
-mb = 1024*kb
-gb = 1024*mb
-
+from Utils.utils import *
+import sys
+import pandas as pd
 import argparse
+
 parser = argparse.ArgumentParser()
 parser.add_argument('-m', '--memory_footprint', default='memory_footprint.txt')
 parser.add_argument('-r', '--hot_region', default='hot_region.txt')
@@ -19,23 +18,12 @@ window_page_size = 2*mb
 if args.use_1gb_pages:
     window_page_size = 1*gb
 
-import math
-def round_up(x, base):
-    return int(base * math.ceil(x/base))
-
-def round_down(x, base):
-    return (int(x / base) * base)
-
-
-def isPowerOfTwo(number):
-    return (number != 0) and ((number & (number - 1)) == 0)
 
 num_layouts = args.num_layouts - 1
 if not isPowerOfTwo(num_layouts):
     raise ValueError('Number of layouts is not power of two')
 
-import sys
-import pandas as pd
+
 footprint_df = pd.read_csv(args.memory_footprint)
 
 hot_region_df = pd.read_csv(args.hot_region, index_col=False, comment='#')
