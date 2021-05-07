@@ -6,6 +6,7 @@ SUBMODULES := \
 	linear_models_coeffs \
 	pebs_tlb_miss_trace \
 	random_window_1g \
+	subgroups_windows \
 	mosmodel \
 	all_data #\
 	train_mosmodel test_mosmodel all_data \

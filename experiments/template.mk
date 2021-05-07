@@ -35,12 +35,8 @@ $(MEASUREMENTS): $(EXPERIMENT_DIR)/layout%: $(LAYOUTS_FILE) $(MOSALLOC_TOOL)
 	echo ========== [INFO] start producing: $@ ==========
 	
 	path_to_cpf="../../layouts/layout$(shell echo $* | cut -d '/' -f 1).csv"
-	echo "emilecho" $$gosha
 	mkdir -p $(dir $@)
 	cd $(dir $@)
-	ccc=${shell pwd}		
-	ARGS_FOR_MOSALLOC="$(shell grep layout"$(shell echo $* | cut -d '/' -f 1)" $< | cut -d ':' -f 2)"
-	echo "argmosalloc " $$ARGS_FOR_MOSALLOC
 	$(MEASURE_GENERAL_METRICS) $(SET_CPU_MEMORY_AFFINITY) $(BOUND_MEMORY_NODE) \
 		$(RUN_MOSALLOC_TOOL) --library $(MOSALLOC_TOOL) -cpf $$path_to_cpf $(EXTRA_ARGS_FOR_MOSALLOC) -- \
 		$(BENCHMARK)

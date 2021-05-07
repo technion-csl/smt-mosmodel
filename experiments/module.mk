@@ -5,7 +5,8 @@ SUBMODULES := \
 	pebs_tlb_miss_trace \
 	growing_window_2m \
 	random_window_2m \
-	sliding_window
+	sliding_window \
+	subgroups_windows
 SUBMODULES := $(addprefix $(MODULE_NAME)/,$(SUBMODULES))
 
 ##### mosalloc paths
