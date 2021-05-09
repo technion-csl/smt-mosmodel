@@ -37,7 +37,7 @@ $(EXPERIMENTS): $(EXPERIMENT_DIR)/layout%: $(foreach repeat,$(REPEATS),$(addsuff
 $(EXPERIMENT_REPEATS): %: %/perf.out
 
 $(MEASUREMENTS): EXTRA_ARGS_FOR_MOSALLOC := $(EXTRA_ARGS_FOR_MOSALLOC)
-$(MEASUREMENTS): $(EXPERIMENT_DIR)/layout%: $(LAYOUTS_FILE) $(MOSALLOC_TOOL)
+$(MEASUREMENTS): $(EXPERIMENT_DIR)/layout%: $(LAYOUTS_DIR) $(MOSALLOC_TOOL)
 	echo ========== [INFO] start producing: $@ ==========
 	
 	path_to_cpf="../../layouts/layout$(shell echo $* | cut -d '/' -f 1).csv"
