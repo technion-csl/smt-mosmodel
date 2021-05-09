@@ -8,11 +8,12 @@ PERF_MEM_RECORD_CMD := perf record --data --count=$(PERF_RECORD_FREQUENCY) --eve
 PEBS_TLB_MISS_TRACE_OUTPUT := $(MODULE_NAME)/perf.data
 $(MODULE_NAME): $(PEBS_TLB_MISS_TRACE_OUTPUT)
 
-$(PEBS_TLB_MISS_TRACE_OUTPUT): $(MOSALLOC_TOOL) experiments/single_page_size/layouts.txt
+$(PEBS_TLB_MISS_TRACE_OUTPUT): $(MOSALLOC_TOOL) experiments/single_page_size/layouts
 	cd $(dir $@)
-	ARGS_FOR_MOSALLOC="$(shell grep layout4k experiments/single_page_size/layouts.txt | cut -d ':' -f 2)"
 	$(PERF_MEM_RECORD_CMD) -- \
-		$(RUN_MOSALLOC_TOOL) --analyze $$ARGS_FOR_MOSALLOC --library $(MOSALLOC_TOOL) -- $(BENCHMARK)
+		$(RUN_MOSALLOC_TOOL) --analyze \
+		-cpf $(ROOT_DIR)/experiments/single_page_size/layouts/layout4kb.csv \
+		--library $(MOSALLOC_TOOL) -- $(BENCHMARK)
 
 DELETE_TARGETS := $(addsuffix /delete,$(PEBS_TLB_MISS_TRACE_OUTPUT))
 

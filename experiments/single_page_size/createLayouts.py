@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+import sys
+import os
+sys.path.append(os.path.dirname(sys.argv[0])+"/..")
 from Utils.utils import *
 from Utils.ConfigurationFile import *
 import argparse
@@ -21,8 +24,8 @@ mmap_pool_size = round_up(args.mmap_pool_limit, 4*kb)
 
 # building configuration for layout_4kb_pages
 configuration = Configuration(current_directory_absolute_path, "layout4kb")
-configuration.setPoolsSize(brk_size=brk_pool_size, 
-                           file_size=file_pool_size, 
+configuration.setPoolsSize(brk_size=brk_pool_size,
+                           file_size=file_pool_size,
                            mmap_size=mmap_pool_size)
 configuration.exportToCSV()
 
@@ -60,7 +63,7 @@ configuration.addWindow(type=configuration.TYPE_BRK,
                         end_offset=round_up(brk_pool_size, 1*gb))
 
 configuration.exportToCSV()
-                        
+
 
 
 # layout_remplate = '-fps 1GB -aps {0} -as1 {1} -ae1 {2} -as2 {3} -ae2 {4} -bps {5} -bs1 {6} -be1 {7} -bs2 {8} -be2 {9}'
