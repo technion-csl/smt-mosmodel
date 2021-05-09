@@ -12,7 +12,8 @@ def loadDataframe(mean_file, output):
     mean_df['walk_cycles'] = mean_ps.getWalkDuration()
     mean_df['stlb_hits'] = mean_ps.getStlbHits()
     mean_df['stlb_misses'] = mean_ps.getStlbMisses()
-    df = mean_df[['layout', 'walk_cycles', 'stlb_hits', 'stlb_misses', 'cpu-cycles']]
+    mean_df['retired_stlb_misses'] = mean_ps.getRetiredStlbMisses()
+    df = mean_df[['layout', 'walk_cycles', 'stlb_hits', 'stlb_misses', 'retired_stlb_misses', 'cpu-cycles']]
     # drop duplicated rows
     important_columns = list(df.columns)
     important_columns.remove('layout')
@@ -58,5 +59,6 @@ test_df = loadDataframe(args.test_mean_file, args.output + 'test_scatter.csv')
 
 plot('walk_cycles', 'table walk cycles', args.output + 'table_walks.pdf', True)
 plot('stlb_misses', 'tlb misses', args.output + 'tlb_misses.pdf', False)
+plot('retired_stlb_misses', 'retired_tlb misses', args.output + 'retired_tlb_misses.pdf', False)
 plot('stlb_hits', 'tlb hits', args.output + 'tlb_hits.pdf', False)
 

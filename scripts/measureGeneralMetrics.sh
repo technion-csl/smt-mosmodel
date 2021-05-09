@@ -23,7 +23,9 @@ dtlb_events=${dtlb_events%?} # remove the trailing , charachter
 energy_events=`perf list | \grep -o "\w*\/energy.*\/" | sort -u | tr '\n' ',i'`
 energy_events=${energy_events%?} # remove the trailing , charachter
 
-perf_command="$prefix_perf_command --event $general_events$dtlb_events -- "
+retired_mem_events=",mem_uops_retired.stlb_miss_loads,mem_uops_retired.stlb_miss_stores"
+
+perf_command="$prefix_perf_command --event $general_events$dtlb_events$retired_mem_events -- "
 
 if [[ -z "$energy_events" ]]; then
     echo "this CPU does not support energy events"

@@ -54,6 +54,15 @@ class PerformanceStatistics:
         else:
             raise Exception('the data-set has no performance counters for TLB misses!')
 
+    def getRetiredStlbMisses(self, index=None):
+        data_set = self.__getDataSet(index)
+        if self._df.columns.contains('mem_uops_retired.stlb_miss_loads')\
+                and self._df.columns.contains('mem_uops_retired.stlb_miss_stores'):
+                    return data_set['mem_uops_retired.stlb_miss_loads'] \
+                            + data_set['mem_uops_retired.stlb_miss_stores']
+        else:
+            raise Exception('the data-set has no performance counters for retired STLB misses!')
+
     '''
     def getStlbMisses(self, index=None):
         data_set = self.__getDataSet(index)
