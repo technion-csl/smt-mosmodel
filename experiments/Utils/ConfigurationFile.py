@@ -18,7 +18,7 @@ class Configuration:
         self.layout_name = layout_name
         path = os.path.join(abs_path, Configuration.LAYOUT_DIRECTORY)
         if not os.path.exists(path):
-            os.makedirs(path)
+            os.makedirs(path, exist_ok=True)
         self.export_file_name = os.path.join(path, layout_name + ".csv")
 
     def addWindow(self, type, page_size, start_offset, end_offset):

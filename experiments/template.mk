@@ -11,11 +11,17 @@ ifndef NUM_OF_REPEATS
 NUM_OF_REPEATS := 4
 endif # ifndef NUM_OF_REPEATS
 
+$(MODULE_NAME)% : NUM_LAYOUTS := $(NUM_LAYOUTS)
+
 EXPERIMENT_DIR := $(MODULE_NAME)
 RESULT_DIR := $(subst experiments,results,$(EXPERIMENT_DIR))
 RESULT_DIRS += $(RESULT_DIR)
 
-LAYOUTS_FILE := $(EXPERIMENT_DIR)/layouts
+LAYOUTS_DIR := $(EXPERIMENT_DIR)/layouts
+LAYOUT_FILES := $(addprefix $(LAYOUTS_DIR)/,$(LAYOUTS))
+LAYOUT_FILES := $(addsuffix .csv,$(LAYOUT_FILES))
+
+$(LAYOUTS_DIR): $(LAYOUT_FILES)
 
 EXPERIMENTS := $(addprefix $(EXPERIMENT_DIR)/,$(LAYOUTS)) 
 RESULTS := $(addsuffix /mean.csv,$(RESULT_DIR)) 
