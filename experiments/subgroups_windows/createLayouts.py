@@ -66,7 +66,8 @@ num_huge_pages = int(window_length / window_page_size)
 # case 1: window_huge_pages >= num_layouts
 # in this case, select candidates for each n=N*i
 # where N = window_huge_pages / num_layouts, i = 1..num_layouts
-from random import sample
+import random
+random.seed(0)
 if num_huge_pages >= args.num_layouts:
     step_size = num_huge_pages / args.num_layouts
     for i in range(1, args.num_layouts+1):
@@ -76,7 +77,7 @@ if num_huge_pages >= args.num_layouts:
                 file_size=1*gb,
                 mmap_size=mmap_footprint)
         subgroup_size = int(i*step_size)
-        huge_pages_offsets = sample(range(num_huge_pages), subgroup_size)
+        huge_pages_offsets = random.sample(range(num_huge_pages), subgroup_size)
         for l in huge_pages_offsets:
             page_offset = window_start + l*window_page_size
             configuration.addWindow(
