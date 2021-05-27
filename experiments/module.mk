@@ -3,6 +3,7 @@ SUBMODULES := \
 	without_mosalloc \
 	single_page_size \
 	pebs_tlb_miss_trace \
+	ratio_window \
 	growing_window_2m \
 	random_window_2m \
 	sliding_window \
@@ -31,6 +32,10 @@ export EXPERIMENTS_ROOT := $(ROOT_DIR)/$(MODULE_NAME)
 export EXPERIMENTS_TEMPLATE := $(EXPERIMENTS_ROOT)/template.mk
 NUMBER_OF_SOCKETS := $(shell ls -d /sys/devices/system/node/node*/ | wc -w)
 export BOUND_MEMORY_NODE := $$(( $(NUMBER_OF_SOCKETS) - 1 ))
+export NUMBER_OF_SOCKETS := $(shell ls -d /sys/devices/system/node/node*/ | wc -w)
+export NUMBER_OF_CORES_PER_SOCKET := $(shell ls -d /sys/devices/system/node/node0/cpu*/ | wc -w)
+export OMP_NUM_THREADS := $(NUMBER_OF_CORES_PER_SOCKET) 
+export OMP_THREAD_LIMIT := $(OMP_NUM_THREADS) 
 
 define configuration_array
 $(addprefix configuration,$(shell seq 1 $1))

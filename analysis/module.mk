@@ -7,6 +7,7 @@ SUBMODULES := \
 	pebs_tlb_miss_trace \
 	random_window_1g \
 	subgroups_windows \
+	ratio_window \
 	mosmodel \
 	all_data #\
 	train_mosmodel test_mosmodel all_data \
