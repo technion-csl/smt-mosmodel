@@ -12,6 +12,9 @@
 *.xz
 *.exe
 *.txt
+*.err
+*.csv*
+*.pdf
 
 results
 __pycache__

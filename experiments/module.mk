@@ -7,7 +7,8 @@ SUBMODULES := \
 	growing_window_2m \
 	random_window_2m \
 	sliding_window \
-	subgroups_windows
+	subgroups_windows \
+	genetic_window
 SUBMODULES := $(addprefix $(MODULE_NAME)/,$(SUBMODULES))
 
 ##### mosalloc paths
