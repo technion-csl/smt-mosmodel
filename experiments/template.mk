@@ -37,15 +37,21 @@ $(EXPERIMENTS): $(EXPERIMENT_DIR)/layout%: $(foreach repeat,$(REPEATS),$(addsuff
 $(EXPERIMENT_REPEATS): %: %/perf.out
 
 $(MEASUREMENTS): EXTRA_ARGS_FOR_MOSALLOC := $(EXTRA_ARGS_FOR_MOSALLOC)
-$(MEASUREMENTS): $(EXPERIMENT_DIR)/layout%: $(LAYOUTS_DIR) $(MOSALLOC_TOOL)
-	echo ========== [INFO] start producing: $@ ==========
-	
-	path_to_cpf="../../layouts/layout$(shell echo $* | cut -d '/' -f 1).csv"
-	mkdir -p $(dir $@)
-	cd $(dir $@)
-	$(MEASURE_GENERAL_METRICS) $(SET_CPU_MEMORY_AFFINITY) $(BOUND_MEMORY_NODE) \
-		$(RUN_MOSALLOC_TOOL) --library $(MOSALLOC_TOOL) -cpf $$path_to_cpf $(EXTRA_ARGS_FOR_MOSALLOC) -- \
-		$(BENCHMARK)
+
+define MEASUREMENTS_template =
+$(EXPERIMENT_DIR)/$(1)/$(2)/perf.out: $(EXPERIMENT_DIR)/layouts/$(1).csv $(MOSALLOC_TOOL)
+	echo ========== [INFO] start producing: $$@ ==========
+	mkdir -p $$(dir $$@)
+	cd $$(dir $$@)
+	$$(MEASURE_GENERAL_METRICS) $$(SET_CPU_MEMORY_AFFINITY) $$(BOUND_MEMORY_NODE) \
+		$$(RUN_MOSALLOC_TOOL) \
+		--library $$(MOSALLOC_TOOL) \
+		-cpf "../../layouts/$(1).csv" \
+		$$(EXTRA_ARGS_FOR_MOSALLOC) -- \
+		$$(BENCHMARK)
+endef
+
+$(foreach layout,$(LAYOUTS),$(foreach repeat,$(REPEATS),$(eval $(call MEASUREMENTS_template,$(layout),$(repeat)))))
 
 results: $(RESULT_DIR)
 $(RESULTS): LAYOUT_LIST := $(call array_to_comma_separated,$(LAYOUTS))

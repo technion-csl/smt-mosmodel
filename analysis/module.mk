@@ -8,6 +8,7 @@ SUBMODULES := \
 	random_window_1g \
 	subgroups_windows \
 	ratio_window \
+	genetic_scan \
 	mosmodel \
 	all_data #\
 	train_mosmodel test_mosmodel all_data \

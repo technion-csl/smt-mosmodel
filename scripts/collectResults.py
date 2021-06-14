@@ -20,6 +20,10 @@ parser.add_argument('-o', '--output_dir', required=True,
                     help='the directory for all output files')
 args = parser.parse_args()
 
+if args.layouts.replace(' ', '') == '':
+    print('layouts argument is empty, skipping...')
+    sys.exit(0)
+
 try:
     layout_list = args.layouts.strip().split(',')
 except KeyError:
