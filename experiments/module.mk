@@ -38,6 +38,7 @@ endef
 #### recipes and rules for prerequisites
 
 $(MOSALLOC_TOOL): $(MOSALLOC_MAKEFILE)
+	$(APT_INSTALL) cmake
 	cd $(dir $<)
 	cmake .
 	make

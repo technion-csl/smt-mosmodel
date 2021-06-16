@@ -31,14 +31,12 @@ $(EXPERIMENTS): $(EXPERIMENT_DIR)/layout%: $(foreach repeat,$(REPEATS),$(addsuff
 $(EXPERIMENT_REPEATS): %: %/perf.out
 
 $(MEASUREMENTS): EXTRA_ARGS_FOR_MOSALLOC := $(EXTRA_ARGS_FOR_MOSALLOC)
-$(MEASUREMENTS): $(EXPERIMENT_DIR)/layout%: $(LAYOUTS_FILE) $(MOSALLOC_TOOL)
+$(MEASUREMENTS): $(EXPERIMENT_DIR)/layout%: $(LAYOUTS_FILE) $(MOSALLOC_TOOL) | experiments-prerequisites
 	echo ========== [INFO] start producing: $@ ==========
-	mkdir -p $(dir $@)
-	cd $(dir $@)
 	ARGS_FOR_MOSALLOC="$(shell grep layout"$(shell echo $* | cut -d '/' -f 1)" $< | cut -d ':' -f 2)"
-	$(MEASURE_GENERAL_METRICS) $(SET_CPU_MEMORY_AFFINITY) $(BOUND_MEMORY_NODE) \
-		$(RUN_MOSALLOC_TOOL) --library $(MOSALLOC_TOOL) $$ARGS_FOR_MOSALLOC $(EXTRA_ARGS_FOR_MOSALLOC) -- \
-		$(BENCHMARK)
+	$(RUN_BENCHMARK) --submit_command "$(MEASURE_GENERAL_METRICS) $(SET_CPU_MEMORY_AFFINITY) $(BOUND_MEMORY_NODE) \
+		$(RUN_MOSALLOC_TOOL) --library $(MOSALLOC_TOOL) $$ARGS_FOR_MOSALLOC $(EXTRA_ARGS_FOR_MOSALLOC)" -- \
+		$(BENCHMARK_PATH) $(dir $@)
 
 results: $(RESULT_DIR)
 $(RESULTS): LAYOUT_LIST := $(call array_to_comma_separated,$(LAYOUTS))
