@@ -6,7 +6,7 @@ $(EXPERIMENT_DIR): $(MOSALLOC_TOOL)
 
 $(EXPERIMENT_DIR): $(MODULE_NAME)/%: | experiments-prerequisites $(BENCHMARKS_ROOT)/%
 	cd $(EXPERIMENT_ROOT_DIR)
-	$(RUN_BENCHMARK_SCRIPT) $* --repeats $(NUM_OF_REPEATS) --submit_command \
+	$(RUN_BENCHMARK) $* --repeats $(NUM_OF_REPEATS) --submit_command \
 		"$(MEASURE_GENERAL_METRICS) $(SET_CPU_MEMORY_AFFINITY) $(BOUND_MEMORY_NODE) \
 		$(RUN_MOSALLOC_TOOL) --analyze $(ARGS_FOR_MOSALLOC_TOOL)"
 

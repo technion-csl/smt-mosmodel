@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
-from Utils.utils import *
 import sys
+import os
+sys.path.append(os.path.dirname(sys.argv[0])+"/..")
+from Utils.utils import *
+from Utils.ConfigurationFile import *
 import pandas as pd
 import argparse
 
@@ -17,12 +20,6 @@ standard_page_size = 4*kb
 window_page_size = 2*mb
 if args.use_1gb_pages:
     window_page_size = 1*gb
-
-
-num_layouts = args.num_layouts - 1
-if not isPowerOfTwo(num_layouts):
-    raise ValueError('Number of layouts is not power of two')
-
 
 footprint_df = pd.read_csv(args.memory_footprint)
 
@@ -67,30 +64,31 @@ if (start_offset + 2*window_length) > brk_footprint:
     sys.exit(str.format('window <{0} : {1}> of the benchmark exceeds the benchmark memory footprint <{2}>',
         start_offset, (start_offset + 2*window_length), brk_footprint))
 
-conf_prefix = str.format('-fps 1GB -aps {0} -bps {1}',
-        mmap_footprint, brk_footprint)
-
 step_size = math.floor(raw_window_length / (args.num_layouts-1))
 step_size = round_up(step_size, 4*kb)
 
-layouts = []
-conf_line_format = '{0} -bs2 {1} -be2 {2} -bs1 {3} -be1 {4}'
-if args.use_1gb_pages:
-    conf_line_format = '{0} -bs1 {1} -be1 {2} -bs2 {3} -be2 {4}'
 for i in range(0, args.num_layouts):
-    config = str.format(conf_line_format,
-            conf_prefix,
-            start_offset, (start_offset + window_length),
-            0, 0)
-    layouts += [config]
+    end_offset = (start_offset + window_length)
+    brk_pool_size = brk_footprint
+    mmap_pool_size = mmap_footprint
+    page_size = 2*mb
+    if args.use_1gb_pages:
+        end_offset = round_up(end_offset, gb)
+        brk_pool_size = round_up(brk_pool_size, gb)
+        mmap_pool_size = round_up(mmap_pool_size, 2*mb)
+        page_size = gb
+    configuration = Configuration(args.output, 'layout'+str(i+1))
+    configuration.setPoolsSize(
+            brk_size=brk_pool_size,
+            file_size=1*gb,
+            mmap_size=mmap_pool_size)
+    configuration.addWindow(
+            type=configuration.TYPE_BRK,
+            page_size=page_size,
+            start_offset=start_offset,
+            end_offset=end_offset)
+    configuration.exportToCSV()
     start_offset += step_size
-
-# prefix each configuration with layoutX: where X is the layout number
-for i in range(len(layouts)):
-    layouts[i] = 'layout' + str(i+1) + ': ' + layouts[i]
-
-with open(args.output, 'w') as output_fid:
-    print('\n'.join(layouts), file=output_fid)
 
 
 

@@ -49,11 +49,12 @@ def buildLayouts(num_layouts, brk_footprint, mmap_footprint, output):
                     page_size=1*gb,
                     start_offset=0,
                     end_offset=end_1g)
-        configuration.addWindow(
-                type=configuration.TYPE_BRK,
-                page_size=2*mb,
-                start_offset=end_1g,
-                end_offset=end_2m)
+        if end_1g != end_2m:
+            configuration.addWindow(
+                    type=configuration.TYPE_BRK,
+                    page_size=2*mb,
+                    start_offset=end_1g,
+                    end_offset=end_2m)
         configuration.exportToCSV()
 
 footprint_df = pd.read_csv(args.memory_footprint)

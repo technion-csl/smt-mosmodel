@@ -1,15 +1,10 @@
-export BENCHMARK_ROOT_DIR := $(ROOT_DIR)/benchmark
-export BENCHMARK := $(BENCHMARK_ROOT_DIR)/run.sh
-ifndef BENCHMARK
-	$(error "BENCHMARK environment variable is not defined!")
-endif
+BENCHMARK_PATH ?= $(ROOT_DIR)/toy_benchmark
+RUN_BENCHMARK := $(SCRIPTS_ROOT_DIR)/runBenchmark.py
 
 # some constants
-export KIBI := $$(( 1024 ))
-export MIBI := $$(( 1024 * 1024 ))
-export GIBI := $$(( 1024 * 1024 * 1024 ))
-export BASE_PAGE_SIZE := $$(( 4 * $(KIBI) ))
-export LARGE_PAGE_SIZE := $$(( 2 * $(MIBI) ))
-export HUGE_PAGE_SIZE := $$(( 1 * $(GIBI) ))
+KIBI := $$(( 1024 ))
+MIBI := $$(( 1024 * 1024 ))
+GIBI := $$(( 1024 * 1024 * 1024 ))
 
-export MMAP_POOL_LIMIT := $$(( 100 * $(MIBI) ))
+MMAP_POOL_LIMIT ?= $$(( 100 * $(MIBI) ))
+

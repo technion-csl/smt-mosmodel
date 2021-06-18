@@ -24,7 +24,6 @@ CHECK_PARANOID := $(SCRIPTS_ROOT_DIR)/checkParanoid.sh
 SET_THP := $(SCRIPTS_ROOT_DIR)/setTransparentHugePages.sh
 SET_CPU_MEMORY_AFFINITY := $(SCRIPTS_ROOT_DIR)/setCpuMemoryAffinity.sh
 MEASURE_GENERAL_METRICS := $(SCRIPTS_ROOT_DIR)/measureGeneralMetrics.sh
-RUN_BENCHMARK_SCRIPT := $(SCRIPTS_ROOT_DIR)/runBenchmark.py
 COLLECT_MEMORY_FOOTPRINT_SCRIPT := $(SCRIPTS_ROOT_DIR)/collectMemoryFootprint.py
 
 ###### global constants
@@ -45,6 +44,7 @@ endef
 #### recipes and rules for prerequisites
 
 $(MOSALLOC_TOOL): $(MOSALLOC_MAKEFILE)
+	$(APT_INSTALL) cmake
 	cd $(dir $<)
 	cmake .
 	make
