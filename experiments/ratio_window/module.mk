@@ -5,9 +5,8 @@ undefine LAYOUTS #allow the template to create new layouts based on the new NUM_
 
 include $(EXPERIMENTS_TEMPLATE)
 
-#FIXME: MEM_BINS_2MB_CSV_FILE is not defined at this stage
 CREATE_RATIO_WINDOW_LAYOUTS_SCRIPT := $(MODULE_NAME)/createLayouts.py
-$(LAYOUT_FILES): $(MEMORY_FOOTPRINT_FILE) $(MEM_BINS_2MB_CSV_FILE)
+$(LAYOUT_FILES): $(MEMORY_FOOTPRINT_FILE) analysis/pebs_tlb_miss_trace/mem_bins_2mb.csv
 	$(CREATE_RATIO_WINDOW_LAYOUTS_SCRIPT) \
 		--memory_footprint=$(MEMORY_FOOTPRINT_FILE) \
 		--input_file=$(MEM_BINS_2MB_CSV_FILE) \
