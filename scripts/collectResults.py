@@ -16,6 +16,8 @@ parser.add_argument('-l', '--layouts', required=False, default=None,
                     help='a comma-separated list of layouts')
 parser.add_argument('-r', '--repeats', default=1, type=int,
                     help='repeats number of each experiment layout')
+parser.add_argument('-d', '--remove_outliers', action='store_true',
+                    help='if specified, then layouts with outliers will be removed')
 parser.add_argument('-o', '--output_dir', required=True,
                     help='the directory for all output files')
 args = parser.parse_args()
@@ -51,6 +53,7 @@ df = pd.concat(dataframe_list)
 mean_df = df.groupby(df.index).mean()
 std_df = df.groupby(df.index).std()
 
+import datetime
 # detect outliers
 index_column = mean_df.index
 interesting_metrics = ['seconds-elapsed', 'ref-cycles', 'cpu-cycles']
@@ -61,7 +64,19 @@ outliers = variation > outlier_threshold
 if outliers.any().any():
     print("Error: the results in", args.experiments_root, "showed considerable variation:")
     print(outliers)
-    #sys.exit('Cells marked with True are the outliers.')
+    if args.remove_outliers:
+        now = str(datetime.datetime.now())[:19]
+        now = now.replace(" ","_").replace(":","-")
+        for layout, outlier in outliers.iterrows():
+            if not outlier['seconds-elapsed'] and not outlier['ref-cycles'] and not outlier['cpu-cycles']:
+                continue
+            l_old_path = args.experiments_root + '/' + layout
+            l_new_path = l_old_path + '.outluer.' + now
+            print('remove outlier: ',l_old_path,' --> ',l_new_path)
+            os.rename(l_old_path, l_new_path)
+        print('The results with outliers have been removed, please try to run them again')
+    else:
+        sys.exit('Cells marked with True are the outliers.')
 
 # if there are no outliers, write the aggregated results
 writeDataframeToCsv(mean_df, output_dir + 'mean.csv')
