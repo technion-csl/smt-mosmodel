@@ -8,7 +8,8 @@ SUBMODULES := \
 	random_window_2m \
 	sliding_window \
 	subgroups_windows \
-	genetic_scan
+	genetic_scan \
+	smart_genetic_scan
 SUBMODULES := $(addprefix $(MODULE_NAME)/,$(SUBMODULES))
 
 ##### mosalloc paths

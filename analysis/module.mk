@@ -9,6 +9,7 @@ SUBMODULES := \
 	subgroups_windows \
 	ratio_window \
 	genetic_scan \
+	smart_genetic_scan \
 	mosmodel \
 	all_data #\
 	train_mosmodel test_mosmodel all_data \
