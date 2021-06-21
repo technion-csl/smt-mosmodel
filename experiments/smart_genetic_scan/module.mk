@@ -7,7 +7,10 @@ undefine LAYOUTS #allow the template to create new layouts based on the new NUM_
 include $(EXPERIMENTS_TEMPLATE)
 
 CREATE_SMART_GENETIC_SCAN_LAYOUTS_SCRIPT := $(MODULE_NAME)/createLayouts.py
-$(LAYOUT_FILES): $(SMART_GENETIC_SCAN_EXP_DIR)/layouts/%.csv: $(MEMORY_FOOTPRINT_FILE) experiments/single_page_size/layout4kb experiments/single_page_size/layout2mb
+$(LAYOUT_FILES): $(SMART_GENETIC_SCAN_EXP_DIR)/layouts/%.csv: $(MEMORY_FOOTPRINT_FILE) \
+	experiments/single_page_size/layout4kb \
+	experiments/single_page_size/layout2mb \
+	analysis/pebs_tlb_miss_trace/mem_bins_2mb.csv
 	mkdir -p results/single_page_size
 	$(COLLECT_RESULTS_SCRIPT) --experiments_root=experiments/single_page_size --repeats=$(NUM_OF_REPEATS) \
 		--layouts=layout4kb,layout2mb --output_dir=results/single_page_size
@@ -20,6 +23,7 @@ $(LAYOUT_FILES): $(SMART_GENETIC_SCAN_EXP_DIR)/layouts/%.csv: $(MEMORY_FOOTPRINT
 		--memory_footprint=$(MEMORY_FOOTPRINT_FILE) \
 		--single_page_size_results=results/single_page_size/mean.csv \
 		--smart_genetic_results=results/smart_genetic_scan/mean.csv \
+		--pebs_mem_bins=analysis/pebs_tlb_miss_trace/mem_bins_2mb.csv \
 		--layout=$* \
 		--layouts_dir=$(dir $@)/..
 
