@@ -55,7 +55,7 @@ $(RESULT_DIR): $(RESULTS)
 $(RESULTS): results/%/mean.csv: experiments/%
 	mkdir -p $(dir $@)
 	$(COLLECT_RESULTS_SCRIPT) --experiments_root=$< --repeats=$(NUM_OF_REPEATS) \
-		--layouts=$(LAYOUT_LIST) --output_dir=$(dir $@) --remove_outliers || $(MAKE) $@
+		--layouts=$(LAYOUT_LIST) --output_dir=$(dir $@) --remove_outliers || $(MAKE) $(MAKECMDGOALS)
 
 DELETED_TARGETS := $(EXPERIMENT_REPEATS) $(EXPERIMENTS)
 CLEAN_TARGETS := $(addsuffix /clean,$(DELETED_TARGETS))
