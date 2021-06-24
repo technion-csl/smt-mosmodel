@@ -17,9 +17,9 @@ numactl_command="numactl --membind $node_number"
 submit_command="$taskset_command $numactl_command"
 
 echo "Move the following cores to online-->offline: $bound_cpu_core"
-sudo bash -c 'echo 0 > /sys/devices/system/cpu/cpu${bound_cpu_core}/online'
+sudo bash -c "echo 0 > /sys/devices/system/cpu/cpu${bound_cpu_core}/online"
 sleep 1
-sudo bash -c 'echo 1 > /sys/devices/system/cpu/cpu${bound_cpu_core}/online'
+sudo bash -c "echo 1 > /sys/devices/system/cpu/cpu${bound_cpu_core}/online"
 sleep 1
 
 $submit_command $command
