@@ -57,7 +57,7 @@ $(RESULTS): results/%/mean.csv: experiments/%
 	$(COLLECT_RESULTS_SCRIPT) --experiments_root=$< --repeats=$(NUM_OF_REPEATS) \
 		--layouts=$(LAYOUT_LIST) --output_dir=$(dir $@) --remove_outliers || $(MAKE) $(MAKECMDGOALS)
 
-DELETED_TARGETS := $(EXPERIMENT_REPEATS) $(EXPERIMENTS)
+DELETED_TARGETS := $(EXPERIMENTS) $(EXPERIMENT_REPEATS) $(LAYOUTS_FILE)
 CLEAN_TARGETS := $(addsuffix /clean,$(DELETED_TARGETS))
 $(CLEAN_TARGETS): %/clean: %/delete
 $(MODULE_NAME)/clean: $(CLEAN_TARGETS)

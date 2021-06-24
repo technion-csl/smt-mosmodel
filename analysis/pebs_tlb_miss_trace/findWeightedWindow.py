@@ -83,7 +83,7 @@ def findWeightedWindow(weight):
                     str(r_sum) + ' , left-sum=' + str(l_sum) + \
                     ' , weigted-accesses=' + str(weighted_accesses))
 
-    if max_access_start_page is -1:
+    if max_access_start_page == -1:
         return -1, -1, -1, -1
 
     # try to shrink the window from two sides by removing pages one by one
