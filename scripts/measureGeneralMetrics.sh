@@ -10,8 +10,8 @@ command="$@"
 general_events="ref-cycles,cpu-cycles,instructions,"
 
 # We no longer measure the cache events because we want to reduce sampling and improve the measuring accuracy.
-#general_events+=",L1-dcache-loads,L1-dcache-stores,L1-dcache-load-misses,L1-dcache-store-misses"
-#general_events+=",LLC-loads,LLC-stores,LLC-load-misses,LLC-store-misses"
+general_events+="L1-dcache-loads,L1-dcache-stores,L1-dcache-load-misses,L1-dcache-store-misses"
+general_events+=",LLC-loads,LLC-stores,LLC-load-misses,LLC-store-misses,"
 
 prefix_perf_command="perf stat --field-separator=, --output=perf.out"
 # extract architecture specific dtlb and energy events from 'ocperf list' output
