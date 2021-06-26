@@ -13,6 +13,9 @@ general_events="ref-cycles,cpu-cycles,instructions,"
 general_events+="L1-dcache-loads,L1-dcache-stores,L1-dcache-load-misses,L1-dcache-store-misses"
 general_events+=",LLC-loads,LLC-stores,LLC-load-misses,LLC-store-misses,"
 
+page_walker_events="page_walker_loads.dtlb_l1,page_walker_loads.dtlb_l2,page_walker_loads.dtlb_l3,page_walker_loads.dtlb_memory"
+page_walker_events+=",page_walker_loads.itlb_l1,page_walker_loads.itlb_l2,page_walker_loads.itlb_l3,page_walker_loads.itlb_memory,"
+
 prefix_perf_command="perf stat --field-separator=, --output=perf.out"
 # extract architecture specific dtlb and energy events from 'ocperf list' output
 dtlb_events=`perf list | \grep -o "dtlb_.*_misses\.\w*" | sort -u | tr '\n' ','`
@@ -23,7 +26,7 @@ dtlb_events=${dtlb_events%?} # remove the trailing , charachter
 energy_events=`perf list | \grep -o "\w*\/energy.*\/" | sort -u | tr '\n' ',i'`
 energy_events=${energy_events%?} # remove the trailing , charachter
 
-perf_command="$prefix_perf_command --event $general_events$dtlb_events -- "
+perf_command="$prefix_perf_command --event $general_events$page_walker_events$dtlb_events -- "
 
 if [[ -z "$energy_events" ]]; then
     echo "this CPU does not support energy events"
