@@ -16,6 +16,15 @@ taskset_command="taskset --cpu-list $bound_cpu_core"
 numactl_command="numactl --membind $node_number"
 submit_command="$taskset_command $numactl_command"
 
+isolated_cpus_list=$(cat /sys/devices/system/cpu/isolated)
+isolated_cpus=$(echo {1..100} | { cut -d" " -f"${isolated_cpus_list// /,}"; })
+if `echo ${isolated_cpus} | grep -w -q ${bound_cpu_core}`; then
+    echo "cpu $bound_cpu_core is isolated"
+else
+    echo "$isolated_cpus_list does not contain cpu number: $bound_cpu_core"
+    exit 111
+fi
+
 echo "Move the following cores to online-->offline: $bound_cpu_core"
 sudo bash -c "echo 0 > /sys/devices/system/cpu/cpu${bound_cpu_core}/online"
 sleep 1

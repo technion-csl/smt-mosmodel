@@ -38,9 +38,11 @@ brk_footprint = math.ceil(brk_footprint / page_size) * page_size
 import numpy as np
 import matplotlib.pyplot as plt
 fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(9,2.5))
+ax2 = ax.twinx()
 # set x, y labels
-plt.xlabel('page number (2MB)')
-plt.ylabel('page type')
+ax.set_xlabel('page number (2MB)')
+ax.set_ylabel('page size')
+ax2.set_ylabel('total pages')
 
 limit = math.ceil(brk_footprint / page_size)
 x = np.arange(0, limit)
@@ -48,15 +50,19 @@ x = np.arange(0, limit)
 layout_files = args.layout_files.strip().split(',')
 layout_labels = args.layout_labels.strip().split(',')
 num_layouts = len(layout_files)
+total_pages = [0, 0] * num_layouts
 for i in range(num_layouts - 1, -1, -1):
     f = layout_files[i]
     l = layout_labels[i]
     pages = getLayoutHugepages(f)
+    print(f,' has [',len(pages),'] hugepages')
     shift = i * 2
     bindata = binary_data(pages, shift, limit)
     y = np.array(bindata)
     #ax.step(x, y, label=l)
     ax.plot(x, y, '|', label=l)
+    total_pages[i*2] = limit-len(pages)
+    total_pages[i*2+1] = len(pages)
 
 handles, labels = ax.get_legend_handles_labels()
 #ax.legend(handles, labels, loc='best')
@@ -64,6 +70,8 @@ ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2),
         ncol=2, fancybox=True, shadow=False)
 ax.set_yticks(np.arange((num_layouts)*2))
 ax.set_yticklabels(['4KB', '2MB'] * num_layouts)
+ax2.set_yticks(np.arange((num_layouts)*2))
+ax2.set_yticklabels(total_pages)
 
 fig.savefig(args.output, bbox_inches='tight')
 
