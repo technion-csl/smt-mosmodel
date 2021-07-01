@@ -20,7 +20,7 @@ POLY_FILE = $(MODULE_NAME)/poly3.csv
 UNIFIED_MEAN_FILE := $(MODULE_NAME)/mean.csv
 
 POLY_COEFFICIENTS := $(MODULE_NAME)/poly_coefficients.csv
-MAX_ERRORS_PLOTS := $(MODULE_NAME)/linear_models.pdf $(MODULE_NAME)/polynomial_models.pdf
+MAX_ERRORS_PLOTS := $(MODULE_NAME)/linear_models_max_errors.pdf $(MODULE_NAME)/polynomial_models_max_errors.pdf
 
 MOSMODEL_TRAIN_MEAN_CSV_FILE := $(MODULE_NAME)/train/mean.csv
 MOSMODEL_TEST_MEAN_CSV_FILE := $(MODULE_NAME)/test/mean.csv

@@ -15,6 +15,11 @@ def plotModels(df, models, output):
         max_error = df[m + error_suffix].abs().max() * 100
         max_errors_df = max_errors_df.append({'model': m, 'max-error': max_error}, ignore_index=True)
 
+    csv_output = output.replace('.pdf', '.csv')
+    if csv_output == output:
+        csv_output += '.csv'
+    max_errors_df.to_csv(csv_output, float_format='%.3f')
+
     fig, ax = plt.subplots(figsize=(4,3))
     ind = np.arange(len(models))  # the x locations for the groups
     ax.bar(ind, max_errors_df['max-error'])
