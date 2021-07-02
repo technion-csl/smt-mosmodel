@@ -2,7 +2,7 @@
 
 import math
 def round_up(num, to_nearest_num):
-    return math.ceil((int(num) / to_nearest_num)) * to_nearest_num
+    return math.ceil((num / to_nearest_num)) * to_nearest_num
 
 import matplotlib
 import matplotlib.pyplot as plt
