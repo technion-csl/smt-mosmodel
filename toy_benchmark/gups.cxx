@@ -89,11 +89,10 @@ uint64_t random_seed(uint64_t n) {
 int main(int argc, char* argv[]) {
     uint64_t log2_array_length = 27ul;
     uint64_t array_length = 1ul<<log2_array_length;
-    uint64_t array_size = array_length<<3ul;
     /* Number of updates to table (suggested: 4x number of table entries) */
     uint64_t num_updates = array_length<<2ul; /* 4x the array size */
     const uint64_t num_parallel_accesses = 128;
-    uint64_t* array = new uint64_t[array_size];
+    uint64_t* array = new uint64_t[array_length];
     assert(array != NULL);
 
     /* Initialize main table */
