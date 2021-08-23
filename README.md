@@ -7,7 +7,7 @@ by Mohammad Agbarya, Idan Yaniv, Jayneel Gandhi, Dan Tsafrir
 
 # Quick Start
 Simply clone this repo, enter the repo directory, and run `make`.
-This will produce Mosmodel for the toy benchmark (random access over a 128MB array, takes ~30 seconds) provided in the repo.
+This will produce Mosmodel for the toy benchmark (random access over a 1GB array, takes ~15 seconds) provided in the repo.
 
 # Software Prerequisites
 - **Sudo permissions**: multiple steps require sudo priviliges, most notably, reserving hugepages and installing apt packages (perf, numactl, ...). We recommend to [configure sudo permissions without password](https://www.cyberciti.biz/faq/linux-unix-running-sudo-command-without-a-password/) to fully automate the workflow. Sudo with password may stop the workflow at these steps prompting for your password.
