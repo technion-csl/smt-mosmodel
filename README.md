@@ -10,8 +10,8 @@ Simply clone this repo, enter the repo directory, and run `make`.
 This will produce Mosmodel for the toy benchmark (random access over a 128MB array, takes ~30 seconds) provided in the repo.
 
 # Software Prerequisites
-- **Sudo permissions**: multiple steps require sudo priviliges, most notably, reserving hugepages and installing apt packages (perf, numactl, ...). We recommend to [configure sudo permissions without password](https://www.cyberciti.biz/faq/linux-unix-running-sudo-command-without-a-password/) to fully automate the workflow. Sudo without password may stop the workflow at these steps prompting for your password.
-- **Linux distro**: The code was tested on Ubuntu 18 LTS and Ubuntu 20 LTS. Please note that all necessary apt packages are downloaded automatically. If you are using a different Linux distribution, you should probably modify the makefile to use the proper package management software and package names. 
+- **Sudo permissions**: multiple steps require sudo priviliges, most notably, reserving hugepages and installing apt packages (perf, numactl, ...). We recommend to [configure sudo permissions without password](https://www.cyberciti.biz/faq/linux-unix-running-sudo-command-without-a-password/) to fully automate the workflow. Sudo with password may stop the workflow at these steps prompting for your password.
+- **Linux distro**: The code was tested on Ubuntu 20 LTS. Please note that all necessary apt packages are downloaded automatically. If you are using a different Linux distribution, you should probably modify the makefile to use the proper package management software and package names.
 - **Python**: Our scripts are written in Python3 and rely on python packages like numpy, pandas, etc. We highly recommend installing the [Anaconda python distribution](https://www.anaconda.com/products/individual), which comes with the required modules built in. We successfully tested our code on Anaconda Individual Edition version 2019.07.
 
 # Hardware Prerequisites
