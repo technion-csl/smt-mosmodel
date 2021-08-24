@@ -7,7 +7,7 @@ by Mohammad Agbarya, Idan Yaniv, Jayneel Gandhi, Dan Tsafrir
 
 # Quick Start
 Simply clone this repo, enter the repo directory, and run `make`.
-This will produce Mosmodel for the toy benchmark (random access over a 128MB array, takes ~30 seconds) provided in the repo.
+This will produce Mosmodel for the toy benchmark (random access over a 1GB array, takes ~15 seconds) provided in the repo.
 
 # Software Prerequisites
 - **Sudo permissions**: multiple steps require sudo priviliges, most notably, reserving hugepages and installing apt packages (perf, numactl, ...). We recommend to [configure sudo permissions without password](https://www.cyberciti.biz/faq/linux-unix-running-sudo-command-without-a-password/) to fully automate the workflow. Sudo with password may stop the workflow at these steps prompting for your password.
@@ -31,8 +31,11 @@ Before you start building and running Mosmodel, you need to set and configure th
 - `scripts` - python scripts to run the experiments, collect the results, build Mosmodel and everything in between.
 - `experiments` - every experiment (== a single run of the benchmark) is stored under this directory.
 - `analysis` - CSV files with raw data and the model coefficients.
-- `toy_benchmark` - a small-memory benchmark supplied with this repo to quickly demonstrate Mosmodel and how it is built. It allocates a 128MB array and reads it randomly.
+- `toy_benchmark` - a small-memory benchmark supplied with this repo to quickly demonstrate Mosmodel and how it is built. It allocates a 1GB array and reads it randomly.
 - `client_server_example` - a demo of how to create a benchmark infrastructure (`pre_run.sh`, `run.sh`, `post_run.sh`) for a client-server workloads, e.g., memcached.
 
-# TODO
-Currently, Mosmodel scans only Mosalloc layouts on the `brk()` pool because it assumes that the benchmark allocates memory through `malloc()`. In case the benchmark uses different allocators (than glibc `malloc()`), then this assumption may not hold. We need to customize the python scripts and makefile infrastructure that create the Mosalloc layouts. The first step toward this goal is running the `mmap_vs_brk` experiments to measure the performance impact of hugepages in the `mmap()` and `brk()` pools, respectively. 
+# Limitations (Future Work)
+- Currently, Mosmodel scans only Mosalloc layouts on the `brk()` pool because it assumes that the benchmark allocates memory through `malloc()`. In case the benchmark uses different allocators (than glibc `malloc()`), then this assumption may not hold. We need to customize the python scripts and makefile infrastructure that create the Mosalloc layouts. The first step toward this goal is running the `mmap_vs_brk` experiments to measure the performance impact of hugepages in the `mmap()` and `brk()` pools, respectively.
+- Currently, our scripts determine the memory pool sizes based on the _physical_ memory consumption. The problem is that Linux allocates memory lazily, but Mosalloc allocates memory eagerly. So if, for example, the program malloc()'s a 1GB array and never touches it, the physical memory footprint will be only a few KBs, and the memory pools will be too small, causing a segfault at runtime.
+- For some workloads, the Sliding Window layouts provide little value. For example, the toy benchmark accesses memory randomly so its TLB miss trace is flat, and sliding a constant-sized window over its memory space yields different layouts with nearly identical performance.
+

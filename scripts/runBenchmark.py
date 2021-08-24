@@ -50,7 +50,7 @@ class BenchmarkRun:
         if self._run_process.returncode != 0:
             raise subprocess.CalledProcessError(self._run_process.returncode, ' '.join(self._run_process.args))
         print('sleeping a bit to let the filesystem recover...')
-        time.sleep(5) # seconds
+        time.sleep(3) # seconds
 
     def post_run(self):
         print('validating the run outputs...')
