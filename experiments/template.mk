@@ -34,6 +34,11 @@ $(MEASUREMENTS): EXTRA_ARGS_FOR_MOSALLOC := $(EXTRA_ARGS_FOR_MOSALLOC)
 $(MEASUREMENTS): $(EXPERIMENT_DIR)/layout%: $(LAYOUTS_FILE) $(MOSALLOC_TOOL) | experiments-prerequisites
 	echo ========== [INFO] start producing: $@ ==========
 	ARGS_FOR_MOSALLOC="$(shell grep layout"$(shell echo $* | cut -d '/' -f 1)" $< | cut -d ':' -f 2)"
+	if [ -z "$$ARGS_FOR_MOSALLOC" ];
+	then
+		echo "Cannot find the layout configuration to run: $@"
+		exit -1
+	fi
 	$(RUN_BENCHMARK) --submit_command "$(MEASURE_GENERAL_METRICS) $(SET_CPU_MEMORY_AFFINITY) $(BOUND_MEMORY_NODE) \
 		$(RUN_MOSALLOC_TOOL) --library $(MOSALLOC_TOOL) $$ARGS_FOR_MOSALLOC $(EXTRA_ARGS_FOR_MOSALLOC)" -- \
 		$(BENCHMARK_PATH) $(dir $@)
