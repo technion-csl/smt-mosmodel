@@ -160,7 +160,10 @@ class LayoutsGenerator:
             start_offset += step_size
 
     def exportLayouts(self, output):
+        i=1
         with open(output, 'w+') as output_fid:
-            print('\n'.join(self._layouts), file=output_fid)
+            for l in self._layouts:
+                print('layout{i}: {l}'.format(i=i, l=l), file=output_fid)
+                i += 1
 
 
