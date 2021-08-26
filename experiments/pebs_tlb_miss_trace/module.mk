@@ -13,7 +13,7 @@ $(PEBS_EXP_OUT_DIR): $(PEBS_TLB_MISS_TRACE_OUTPUT)
 
 $(MODULE_NAME): $(PEBS_TLB_MISS_TRACE_OUTPUT)
 
-$(PEBS_TLB_MISS_TRACE_OUTPUT): $(MOSALLOC_TOOL) experiments/single_page_size/layouts.txt
+$(PEBS_TLB_MISS_TRACE_OUTPUT): experiments/single_page_size/layouts.txt | experiments-prerequisites 
 	ARGS_FOR_MOSALLOC="$(shell grep layout4k experiments/single_page_size/layouts.txt | cut -d ':' -f 2)"
 	$(RUN_BENCHMARK) --exclude_files=$(notdir $@) \
 		--submit_command "$(PERF_MEM_RECORD_CMD) -- $(RUN_MOSALLOC_TOOL) --analyze $$ARGS_FOR_MOSALLOC --library $(MOSALLOC_TOOL)" \

@@ -37,18 +37,19 @@ endef
 
 #### recipes and rules for prerequisites
 
+.PHONY: experiments-prerequisites perf numactl mosalloc test-run-mosalloc-tool
+
+mosalloc: $(MOSALLOC_TOOL)
 $(MOSALLOC_TOOL): $(MOSALLOC_MAKEFILE)
 	$(APT_INSTALL) cmake libgtest-dev
 	cd $(dir $<)
 	cmake .
-	make
+	make -j && ctest -VV
 
 $(MOSALLOC_MAKEFILE):
 	git submodule update --init --progress
 
-.PHONY: experiments-prerequisites perf numactl
-
-experiments-prerequisites: perf numactl
+experiments-prerequisites: perf numactl mosalloc
 
 PERF_PACKAGES := linux-tools
 KERNEL_VERSION := $(shell uname -r)
@@ -62,7 +63,6 @@ numactl:
 	$(APT_INSTALL) $@
 
 TEST_RUN_MOSALLOC_TOOL := $(SCRIPTS_ROOT_DIR)/testRunMosallocTool.sh
-.PHONY: test-run-mosalloc-tool
 test-run-mosalloc-tool: $(RUN_MOSALLOC_TOOL) $(MOSALLOC_TOOL)
 	$(TEST_RUN_MOSALLOC_TOOL) $<
 
