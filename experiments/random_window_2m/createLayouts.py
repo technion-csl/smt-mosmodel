@@ -18,7 +18,6 @@ parser.add_argument('-s', '--seed', type=int, default=0)
 parser.add_argument('-o', '--output', required=True)
 args = parser.parse_args()
 
-
 num_layouts = args.num_layouts - 1
 if not isPowerOfTwo(num_layouts):
     raise ValueError('Number of layouts is not power of two')

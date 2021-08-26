@@ -20,7 +20,6 @@ parser.add_argument('--max_1gb_hugepages', type=int, default=4)
 parser.add_argument('-o', '--output', required=True)
 args = parser.parse_args()
 
-
 max_1gb_hugepages = args.max_1gb_hugepages * gb
 def buildLayouts(num_layouts, brk_footprint, mmap_footprint, output):
     layouts = []

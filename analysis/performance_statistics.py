@@ -18,8 +18,8 @@ class PerformanceStatistics:
         data_set = self.__getDataSet(index)
         load_counter = 'dtlb_load_misses.walk_' + counter_suffix
         store_counter = 'dtlb_store_misses.walk_' + counter_suffix
-        if self._df.columns.contains(load_counter) \
-                and self._df.columns.contains(store_counter):
+        if load_counter in self._df.columns \
+                and store_counter in self._df.columns:
                     return data_set[load_counter] + data_set[store_counter]
         else:
             return None
@@ -38,8 +38,8 @@ class PerformanceStatistics:
 
     def getStlbHits(self, index=None):
         data_set = self.__getDataSet(index)
-        if self._df.columns.contains('dtlb_load_misses.stlb_hit')\
-                and self._df.columns.contains('dtlb_store_misses.stlb_hit'):
+        if 'dtlb_load_misses.stlb_hit' in self._df.columns \
+                and 'dtlb_store_misses.stlb_hit' in self._df.columns:
                     return data_set['dtlb_load_misses.stlb_hit'] \
                             + data_set['dtlb_store_misses.stlb_hit']
         else:
@@ -47,8 +47,8 @@ class PerformanceStatistics:
 
     def getStlbMisses(self, index=None):
         data_set = self.__getDataSet(index)
-        if self._df.columns.contains('dtlb_load_misses.miss_causes_a_walk')\
-                and self._df.columns.contains('dtlb_store_misses.miss_causes_a_walk'):
+        if 'dtlb_load_misses.miss_causes_a_walk' in self._df.columns \
+                and 'dtlb_store_misses.miss_causes_a_walk' in self._df.columns:
                     return data_set['dtlb_load_misses.miss_causes_a_walk'] \
                             + data_set['dtlb_store_misses.miss_causes_a_walk']
         else:
@@ -57,8 +57,8 @@ class PerformanceStatistics:
     '''
     def getStlbMisses(self, index=None):
         data_set = self.__getDataSet(index)
-        if self._df.columns.contains('dtlb_load_misses.walk_completed')\
-        and self._df.columns.contains('dtlb_store_misses.walk_completed'):
+        if 'dtlb_load_misses.walk_completed' in self._df.columns \
+        and 'dtlb_store_misses.walk_completed' in self._df.columns:
             return data_set['dtlb_load_misses.walk_completed'] \
                     + data_set['dtlb_store_misses.walk_completed']
         else:
@@ -67,8 +67,8 @@ class PerformanceStatistics:
 
     def getStlbMisses2m(self, index=None):
         data_set = self.__getDataSet(index)
-        if self._df.columns.contains('dtlb_load_misses.walk_completed_2m_4m')\
-        and self._df.columns.contains('dtlb_store_misses.walk_completed_2m_4m'):
+        if 'dtlb_load_misses.walk_completed_2m_4m' in self._df.columns \
+        and 'dtlb_store_misses.walk_completed_2m_4m' in self._df.columns:
             return data_set['dtlb_load_misses.walk_completed_2m_4m'] \
                     + data_set['dtlb_store_misses.walk_completed_2m_4m']
         else:
@@ -77,8 +77,8 @@ class PerformanceStatistics:
 
     def getStlbMisses4k(self, index=None):
         data_set = self.__getDataSet(index)
-        if self._df.columns.contains('dtlb_load_misses.walk_completed_4k')\
-        and self._df.columns.contains('dtlb_store_misses.walk_completed_4k'):
+        if 'dtlb_load_misses.walk_completed_4k' in self._df.columns \
+        and 'dtlb_store_misses.walk_completed_4k' in self._df.columns:
             return data_set['dtlb_load_misses.walk_completed_4k'] \
                     + data_set['dtlb_store_misses.walk_completed_4k']
         else:
@@ -99,8 +99,8 @@ class PerformanceStatistics:
 
     def getL1Accesses(self, index=None):
         data_set = self.__getDataSet(index)
-        if self._df.columns.contains('L1-dcache-loads')\
-                and self._df.columns.contains('L1-dcache-stores'):
+        if 'L1-dcache-loads' in self._df.columns \
+                and 'L1-dcache-stores' in self._df.columns:
                     return data_set['L1-dcache-loads'] \
                             + data_set['L1-dcache-stores']
         else:
@@ -108,8 +108,8 @@ class PerformanceStatistics:
 
     def getL1Misses(self, index=None):
         data_set = self.__getDataSet(index)
-        if self._df.columns.contains('L1-dcache-load-misses')\
-                and self._df.columns.contains('L1-dcache-store-misses'):
+        if 'L1-dcache-load-misses' in self._df.columns \
+                and 'L1-dcache-store-misses' in self._df.columns:
                     return data_set['L1-dcache-load-misses'] \
                             + data_set['L1-dcache-store-misses']
         else:
@@ -123,8 +123,8 @@ class PerformanceStatistics:
 
     def getLlcAccesses(self, index=None):
         data_set = self.__getDataSet(index)
-        if self._df.columns.contains('LLC-loads')\
-                and self._df.columns.contains('LLC-stores'):
+        if 'LLC-loads' in self._df.columns \
+                and 'LLC-stores' in self._df.columns:
                     return data_set['LLC-loads'] \
                             + data_set['LLC-stores']
         else:
@@ -132,8 +132,8 @@ class PerformanceStatistics:
 
     def getLlcMisses(self, index=None):
         data_set = self.__getDataSet(index)
-        if self._df.columns.contains('LLC-load-misses')\
-                and self._df.columns.contains('LLC-store-misses'):
+        if 'LLC-load-misses' in self._df.columns\
+                and 'LLC-store-misses' in self._df.columns:
                     return data_set['LLC-load-misses'] \
                             + data_set['LLC-store-misses']
         else:
@@ -153,28 +153,28 @@ class PerformanceStatistics:
 
     def getPageWalkerL1Hits(self, index=None):
         data_set = self.__getDataSet(index)
-        if self._df.columns.contains('page_walker_loads.dtlb_l1'):
+        if 'page_walker_loads.dtlb_l1' in self._df.columns:
             return data_set['page_walker_loads.dtlb_l1']
         else:
             raise Exception('the data-set has no performance counters for page_walker_loads.dtlb_l1!')
 
     def getPageWalkerL2Hits(self, index=None):
         data_set = self.__getDataSet(index)
-        if self._df.columns.contains('page_walker_loads.dtlb_l2'):
+        if 'page_walker_loads.dtlb_l2' in self._df.columns:
             return data_set['page_walker_loads.dtlb_l2']
         else:
             raise Exception('the data-set has no performance counters for page_walker_loads.dtlb_l2!')
 
     def getPageWalkerL3Hits(self, index=None):
         data_set = self.__getDataSet(index)
-        if self._df.columns.contains('page_walker_loads.dtlb_l3'):
+        if 'page_walker_loads.dtlb_l3' in self._df.columns:
             return data_set['page_walker_loads.dtlb_l3']
         else:
             raise Exception('the data-set has no performance counters for page_walker_loads.dtlb_l3!')
 
     def getPageWalkerMemoryAccesses(self, index=None):
         data_set = self.__getDataSet(index)
-        if self._df.columns.contains('page_walker_loads.dtlb_memory'):
+        if 'page_walker_loads.dtlb_memory' in self._df.columns:
             return data_set['page_walker_loads.dtlb_memory']
         else:
             raise Exception('the data-set has no performance counters for page_walker_loads.dtlb_memory!')
@@ -182,7 +182,7 @@ class PerformanceStatistics:
 
     def getRuntime(self, index=None):
         data_set = self.__getDataSet(index)
-        if self._df.columns.contains('cpu-cycles'):
+        if 'cpu-cycles' in self._df.columns:
             return data_set['cpu-cycles']
         else:
             raise Exception('the data-set has no performance counters for CPU cycles!')

@@ -1,3 +1,6 @@
+experiments/
+analysis/pebs_tlb_miss_trace/
+
 *.o
 *.a
 *.so
@@ -14,6 +17,7 @@
 *.txt
 *.err
 *.csv*
+*.data
 *.pdf
 
 results

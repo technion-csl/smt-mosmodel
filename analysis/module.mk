@@ -5,16 +5,12 @@ SUBMODULES := \
 	sliding_window \
 	linear_models_coeffs \
 	pebs_tlb_miss_trace \
-	random_window_1g \
 	subgroups_windows \
 	ratio_window \
 	genetic_scan \
 	smart_genetic_scan \
 	mosmodel \
-	all_data #\
-	train_mosmodel test_mosmodel all_data \
-	tlb_misses_vs_table_walks \
-	single_page_size model_errors perf_mem
+	all_data
 SUBMODULES := $(addprefix $(MODULE_NAME)/,$(SUBMODULES))
 
 ARRANGE_DATA_TO_PLOT_SCRIPT := $(MODULE_NAME)/arrangeDataToPlot.py

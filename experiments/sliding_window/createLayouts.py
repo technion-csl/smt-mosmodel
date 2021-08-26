@@ -27,30 +27,12 @@ hot_region_df = pd.read_csv(args.hot_region, index_col=False, comment='#')
 conf_row = hot_region_df[hot_region_df['window-weight'] == args.weight]
 hot_region_start_page = conf_row['window-start'].iloc[0]
 hot_region_num_pages = conf_row['window-length'].iloc[0]
+
+generator = LayoutsGenerator(args.memory_footprint, args.num_layouts, args.use_1gb_pages)
 if hot_region_start_page < 0 or hot_region_num_pages < 0:
-    sys.exit('The benchmark has no ' + str(args.weight) + '% weighted window')
-hot_region_start =  hot_region_start_page * standard_page_size
-hot_region_length = hot_region_num_pages * standard_page_size
-
-mmap_footprint = footprint_df['anon-mmap-max'][0]
-brk_footprint = footprint_df['brk-max'][0]
-
-hot_region_brk_start = conf_row['brk-start'].iloc[0]
-hot_region_brk_size = conf_row['brk-length'].iloc[0]
-window_start = round_down(hot_region_start, standard_page_size)
-raw_window_length = round_up(hot_region_length, standard_page_size)
-window_length = round_up(raw_window_length, window_page_size)
-
-window_end = window_start + window_length
-
-# extend pool footprint in case the window exceeds it (due to rounding works)
-brk_footprint = max(brk_footprint, window_end)
-
-# check where to move the window: to left or right (to the direction with enough space)
-if window_start > window_length:
-    start_offset = window_start - window_length
-elif (window_length + window_end) <= brk_footprint:
-    start_offset = window_start
+    print('The benchmark has no ' + str(args.weight) + '% weighted window')
+    print('building random-window layouts instead with seed=' + str(args.weight))
+    generator.buildRandomWindowLayouts(seed=args.weight)
 else:
     start_offset = window_start
     brk_footprint = window_end + window_length
@@ -89,6 +71,4 @@ for i in range(0, args.num_layouts):
             end_offset=end_offset)
     configuration.exportToCSV()
     start_offset += step_size
-
-
 

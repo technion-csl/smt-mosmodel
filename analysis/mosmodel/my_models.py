@@ -24,14 +24,16 @@ mosmodel = getMosmodel(3)
 
 import utility
 def calculateModelError(model, train_df, test_df, features):
+    x_test = test_df[features]
+    y_true = test_df['cpu-cycles']
+    y_pred = predictRuntime(model, train_df, features, x_test)
+    error = utility.relativeError(y_true, y_pred)
+    return error
+
+def predictRuntime(model, train_df, features, x):
     x_train = train_df[features]
     y_train = train_df['cpu-cycles']
     model.fit(x_train, y_train)
 
-    x_test = test_df[features]
-    y_true = test_df['cpu-cycles']
-    y_pred = model.predict(x_test)
-    error = utility.relativeError(y_true, y_pred)
-    return error
-
+    return model.predict(x)
 

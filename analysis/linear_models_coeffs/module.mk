@@ -1,8 +1,6 @@
 MODULE_NAME := analysis/linear_models_coeffs
 SUBMODULES := 
 
-include $(COMMON_ANALYSIS_MAKEFILE)
-
 BUILD_LINEAR_MODELS_COEFFS := $(ROOT_DIR)/$(MODULE_NAME)/buildLinearModelsCoeffs.py
 LINEAR_MODELS_COEFFS := $(MODULE_NAME)/coeffs.csv
 
@@ -11,4 +9,6 @@ $(LINEAR_MODELS_COEFFS): results/single_page_size/mean.csv
 
 DELETE_TARGETS := $(addsuffix /delete,$(LINEAR_MODELS_COEFFS))
 $(MODULE_NAME)/clean: $(DELETE_TARGETS)
+
+include $(ROOT_DIR)/common.mk
 

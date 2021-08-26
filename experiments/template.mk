@@ -39,7 +39,7 @@ $(EXPERIMENT_REPEATS): %: %/perf.out
 $(MEASUREMENTS): EXTRA_ARGS_FOR_MOSALLOC := $(EXTRA_ARGS_FOR_MOSALLOC)
 
 define MEASUREMENTS_template =
-$(EXPERIMENT_DIR)/$(1)/$(2)/perf.out: $(EXPERIMENT_DIR)/layouts/$(1).csv $(MOSALLOC_TOOL) | experiments-prerequisites 
+$(EXPERIMENT_DIR)/$(1)/$(2)/perf.out: $(EXPERIMENT_DIR)/layouts/$(1).csv | experiments-prerequisites 
 	echo ========== [INFO] start producing: $$@ ==========
 	$$(RUN_BENCHMARK) --submit_command \
 		"$$(MEASURE_GENERAL_METRICS) $$(SET_CPU_MEMORY_AFFINITY) $$(BOUND_MEMORY_NODE) \
@@ -57,7 +57,7 @@ $(RESULTS): results/%/mean.csv: experiments/%
 	$(COLLECT_RESULTS_SCRIPT) --experiments_root=$< --repeats=$(NUM_OF_REPEATS) \
 		--layouts=$(LAYOUT_LIST) --output_dir=$(dir $@) --remove_outliers || $(MAKE) $(MAKECMDGOALS)
 
-DELETED_TARGETS := $(EXPERIMENT_REPEATS) $(EXPERIMENTS)
+DELETED_TARGETS := $(EXPERIMENTS) $(EXPERIMENT_REPEATS) $(LAYOUTS_FILE)
 CLEAN_TARGETS := $(addsuffix /clean,$(DELETED_TARGETS))
 $(CLEAN_TARGETS): %/clean: %/delete
 $(MODULE_NAME)/clean: $(CLEAN_TARGETS)
