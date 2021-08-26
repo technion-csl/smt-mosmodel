@@ -1,0 +1,5 @@
+type,pageSize,startOffset,endOffset
+brk,-1,0,8698986496
+file,-1,0,1073741824
+mmap,-1,0,104857600
+brk,2097152,0,8698986496

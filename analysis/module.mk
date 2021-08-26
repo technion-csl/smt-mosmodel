@@ -5,6 +5,7 @@ SUBMODULES := \
 	sliding_window \
 	linear_models_coeffs \
 	pebs_tlb_miss_trace \
+	gups_puzzle \
 	subgroups_windows \
 	ratio_window \
 	genetic_scan \

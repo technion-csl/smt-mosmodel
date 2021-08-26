@@ -7,6 +7,7 @@ SUBMODULES := \
 	growing_window_2m \
 	random_window_2m \
 	sliding_window \
+	gups_puzzle \
 	subgroups_windows \
 	genetic_scan \
 	smart_genetic_scan
