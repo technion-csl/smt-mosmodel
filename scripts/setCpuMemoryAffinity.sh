@@ -17,17 +17,21 @@ numactl_command="numactl --membind $node_number"
 submit_command="$taskset_command $numactl_command"
 
 isolated_cpus_list=$(cat /sys/devices/system/cpu/isolated)
-isolated_cpus=$(echo {1..100} | { cut -d" " -f"${isolated_cpus_list// /,}"; })
-if `echo ${isolated_cpus} | grep -w -q ${bound_cpu_core}`; then
-    echo "cpu $bound_cpu_core is isolated"
-    echo "Move the following cores to online-->offline: $bound_cpu_core"
-    sudo bash -c "echo 0 > /sys/devices/system/cpu/cpu${bound_cpu_core}/online"
-    sleep 1
-    sudo bash -c "echo 1 > /sys/devices/system/cpu/cpu${bound_cpu_core}/online"
-    sleep 1
+if [[ ! -z $isolated_cpus_list ]]; then
+    isolated_cpus=$(echo {1..100} | { cut -d" " -f"${isolated_cpus_list// /,}"; })
+    if `echo ${isolated_cpus} | grep -w -q ${bound_cpu_core}`; then
+        echo "cpu $bound_cpu_core is isolated"
+        echo "Move the following cores to online-->offline: $bound_cpu_core"
+        sudo bash -c "echo 0 > /sys/devices/system/cpu/cpu${bound_cpu_core}/online"
+        sleep 1
+        sudo bash -c "echo 1 > /sys/devices/system/cpu/cpu${bound_cpu_core}/online"
+        sleep 1
+    else
+        echo "$isolated_cpus_list does not contain cpu number: $bound_cpu_core"
+        echo "skipping moving the bounded core to offline->online..."
+    fi
 else
-    echo "$isolated_cpus_list does not contain cpu number: $bound_cpu_core"
-    echo "skipping moving the bounded core to offline->online..."
+    echo "isolcpus is not enabled"
 fi
 
 $submit_command $command
