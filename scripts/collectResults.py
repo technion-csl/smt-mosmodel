@@ -71,16 +71,16 @@ if outliers.any().any():
             if not outlier['seconds-elapsed'] and not outlier['ref-cycles'] and not outlier['cpu-cycles']:
                 continue
             l_old_path = args.experiments_root + '/' + layout
-            l_new_path = l_old_path + '.outluer.' + now
+            l_new_path = l_old_path + '.outlier.' + now
             print('remove outlier: ',l_old_path,' --> ',l_new_path)
             os.rename(l_old_path, l_new_path)
         print('The results with outliers have been removed, please try to run them again')
     else:
         sys.exit('Cells marked with True are the outliers.')
-
-# if there are no outliers, write the aggregated results
-writeDataframeToCsv(mean_df, output_dir + 'mean.csv')
-if not single_layout:
-    writeDataframeToCsv(df, output_dir + 'all_repeats.csv')
-    writeDataframeToCsv(std_df, output_dir + 'std.csv')
+else:
+    # if there are no outliers, write the aggregated results
+    writeDataframeToCsv(mean_df, output_dir + 'mean.csv')
+    if not single_layout:
+        writeDataframeToCsv(df, output_dir + 'all_repeats.csv')
+        writeDataframeToCsv(std_df, output_dir + 'std.csv')
 
