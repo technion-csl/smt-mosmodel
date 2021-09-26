@@ -1,6 +1,6 @@
 MODULE_NAME := experiments
 SUBMODULES := \
-	without_mosalloc \
+	memory_footprint \
 	single_page_size \
 	pebs_tlb_miss_trace \
 	growing_window_2m \
@@ -70,7 +70,7 @@ test-run-mosalloc-tool: $(RUN_MOSALLOC_TOOL) $(MOSALLOC_TOOL)
 
 MEMORY_FOOTPRINT_FILE := $(MODULE_NAME)/memory_footprint.csv
 
-$(MEMORY_FOOTPRINT_FILE): | experiments/single_page_size/layout4kb
+$(MEMORY_FOOTPRINT_FILE): | experiments/memory_footprint/layout4kb
 	$(COLLECT_MEMORY_FOOTPRINT_SCRIPT) $| --output=$@
 
 $(MODULE_NAME)/clean:
