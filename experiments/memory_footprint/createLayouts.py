@@ -29,5 +29,3 @@ layout = 'layout4kb: ' + layout_4kb_pages
 with open(args.output, 'w+') as output_fid:
     print(layout, file=output_fid)
 
-
-
