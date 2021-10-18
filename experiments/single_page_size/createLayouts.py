@@ -2,10 +2,7 @@
 
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument('-s', '--max_res_memory_kb', default='max_mem.txt',
-        type=int, help='Maximum resident memory in KB')
-parser.add_argument('-m', '--mmap_pool_limit', default=100*1024*1024,
-        type=int, help='The maximum size of mmap pool')
+parser.add_argument('-m', '--memory_footprint', default='memory_footprint.txt')
 parser.add_argument('-o', '--output', required=True)
 args = parser.parse_args()
 
@@ -20,10 +17,14 @@ kb = 1024
 mb = 1024*kb
 gb = 1024*mb
 
-max_res_memory = args.max_res_memory_kb * kb
-extra_mem = min(100*mb, 0.1*max_res_memory)
-brk_pool_size = round_up(max_res_memory + extra_mem, 4*kb)
-mmap_pool_size = round_up(args.mmap_pool_limit, 4*kb)
+import pandas as pd
+footprint_df = pd.read_csv(args.memory_footprint)
+mmap_footprint = footprint_df['anon-mmap-max'][0]
+brk_footprint = footprint_df['brk-max'][0]
+
+brk_pool_size = round_up(brk_footprint, 4*kb)
+mmap_pool_size = round_up(mmap_footprint, 4*kb)
+
 layout_remplate = '-fps 1GB -aps {0} -as1 {1} -ae1 {2} -as2 {3} -ae2 {4} -bps {5} -bs1 {6} -be1 {7} -bs2 {8} -be2 {9}'
 layout_4kb_pages = str.format(layout_remplate,
         mmap_pool_size, 0, 0, 0, 0,

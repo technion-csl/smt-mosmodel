@@ -23,7 +23,6 @@ MEM_BINS_2MB_CHART_FILE := $(MODULE_NAME)/mem_bins_2mb.pdf
 MEM_BINS_4KB_CSV_FILE := $(MODULE_NAME)/mem_bins_4kb.csv
 
 PEBS_TARGET_FILES := $(MEM_ACCESSES_FILE) $(MEM_ACCESS_COUNT_FILE) $(MEM_BINS_4KB_CSV_FILE) $(MEM_BINS_2MB_CSV_FILE) $(MEM_BINS_2MB_CHART_FILE) $(WINDOW_2MB_FILE) $(WINDOW_4KB_FILE)
-PEBS_EXP_DIR := $(MODULE_NAME:analysis%=experiments%)
 
 $(HOT_REGION_FILE): $(WINDOW_4KB_FILE)
 	diff $< $@ > /dev/null 2>&1 || cp --update $< $@
@@ -43,24 +42,24 @@ $(MEM_BINS_2MB_CHART_FILE): $(MEM_BINS_2MB_CSV_FILE)
 	$(PLOT_BINS_SCRIPT) --input=$^ --output=$@ \
 		--figure_y_label="tlb misses" --time_windows=1
 
-$(MEM_BINS_4KB_CSV_FILE): $(PEBS_EXP_DIR)
+$(MEM_BINS_4KB_CSV_FILE): $(PEBS_EXP_OUT_DIR)
 	$(PERF_MEM_REPORT_PREFIX) -i $^/perf.data report | \
 		$(FIX_DELIM_IN_PERF_MEM_OUTPUT_HEADER) | \
 		$(BIN_ADDRESSES_SCRIPT) --width=4096 --output=$@ \
 		--pools_range_file=$^/pools_base_pointers.out
 
-$(MEM_BINS_2MB_CSV_FILE): $(PEBS_EXP_DIR)
+$(MEM_BINS_2MB_CSV_FILE): $(PEBS_EXP_OUT_DIR)
 	$(PERF_MEM_REPORT_PREFIX) -i $^/perf.data report | \
 		$(FIX_DELIM_IN_PERF_MEM_OUTPUT_HEADER) | \
 		$(BIN_ADDRESSES_SCRIPT) --width=$$(( 2**21 )) --output=$@ \
 		--pools_range_file=$^/pools_base_pointers.out
 
-$(MEM_ACCESS_COUNT_FILE): $(PEBS_EXP_DIR)
+$(MEM_ACCESS_COUNT_FILE): $(PEBS_EXP_OUT_DIR)
 	$(PERF_MEM_REPORT_PREFIX) -i $^/perf.data report | \
 		$(FIX_DELIM_IN_PERF_MEM_OUTPUT_HEADER) | \
 		$(COUNT_MEMORY_ACCESSES_SCRIPT) -o $@ -p $^/pools_base_pointers.out
 
-$(MEM_ACCESSES_FILE): $(PEBS_EXP_DIR)
+$(MEM_ACCESSES_FILE): $(PEBS_EXP_OUT_DIR)
 	$(PERF_MEM_REPORT_PREFIX) -i $^/perf.data report | \
 		$(FIX_DELIM_IN_PERF_MEM_OUTPUT_HEADER) | \
 		$(PARSE_PERF_MEM_RAW_FILE_SCRIPT) -o $@ -p $^/pools_base_pointers.out

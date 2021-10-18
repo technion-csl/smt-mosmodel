@@ -1,13 +1,14 @@
+SHELL := /bin/bash
+# run all lines of a recipe in a single invocation of the shell rather than each line being invoked separately
+.ONESHELL:
+# invoke recipes as if the shell had been passed the -e flag: the first failing command in a recipe will cause the recipe to fail immediately
+.POSIX:
+
 MODULE_NAME := all
 $(MODULE_NAME):
 
-SHELL := /bin/bash
-# all commands in a recipe are passed to a single invocation of the shell
-.ONESHELL:
-
 export ROOT_DIR := $(PWD)
 export HOST_NAME := $(shell hostname)
-LOG_FILE := $(ROOT_DIR)/log
 
 # global auxiliary functions
 comma := ,
@@ -30,7 +31,6 @@ include $(ROOT_DIR)/common.mk
 # a top-level "clean" target, which calls all/clean
 .PHONY: clean
 clean: all/clean
-	rm -f $(LOG_FILE)
 
 # a generic pattern rule for deleting files
 .PHONY: %/delete

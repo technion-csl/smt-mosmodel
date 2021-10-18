@@ -1,6 +1,6 @@
 MODULE_NAME := experiments
 SUBMODULES := \
-	without_mosalloc \
+	memory_footprint \
 	single_page_size \
 	pebs_tlb_miss_trace \
 	growing_window_2m \
@@ -37,12 +37,14 @@ endef
 
 #### recipes and rules for prerequisites
 
-.PHONY: experiments-prerequisites perf numactl cmake
+.PHONY: experiments-prerequisites perf numactl mosalloc test-run-mosalloc-tool
 
-$(MOSALLOC_TOOL): $(MOSALLOC_MAKEFILE) | cmake
+mosalloc: $(MOSALLOC_TOOL)
+$(MOSALLOC_TOOL): $(MOSALLOC_MAKEFILE)
+	$(APT_INSTALL) cmake libgtest-dev
 	cd $(dir $<)
 	cmake .
-	make
+	make -j && ctest -VV
 
 cmake:
 	$(QUERY_PACKAGES_SCRIPT) cmake
@@ -50,7 +52,7 @@ cmake:
 $(MOSALLOC_MAKEFILE):
 	git submodule update --init --progress
 
-experiments-prerequisites: perf numactl
+experiments-prerequisites: perf numactl mosalloc
 
 PERF_PACKAGES := linux-tools
 KERNEL_VERSION := $(shell uname -r)
@@ -64,7 +66,6 @@ numactl:
 	$(APT_INSTALL) $@
 
 TEST_RUN_MOSALLOC_TOOL := $(SCRIPTS_ROOT_DIR)/testRunMosallocTool.sh
-.PHONY: test-run-mosalloc-tool
 test-run-mosalloc-tool: $(RUN_MOSALLOC_TOOL) $(MOSALLOC_TOOL)
 	$(TEST_RUN_MOSALLOC_TOOL) $<
 
@@ -72,7 +73,7 @@ test-run-mosalloc-tool: $(RUN_MOSALLOC_TOOL) $(MOSALLOC_TOOL)
 
 MEMORY_FOOTPRINT_FILE := $(MODULE_NAME)/memory_footprint.csv
 
-$(MEMORY_FOOTPRINT_FILE): | experiments/single_page_size/layout4kb
+$(MEMORY_FOOTPRINT_FILE): | experiments/memory_footprint/layout4kb
 	$(COLLECT_MEMORY_FOOTPRINT_SCRIPT) $| --output=$@
 
 $(MODULE_NAME)/clean:

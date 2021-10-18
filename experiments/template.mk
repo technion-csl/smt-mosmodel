@@ -33,14 +33,17 @@ $(EXPERIMENTS): $(EXPERIMENT_DIR)/layout%: $(foreach repeat,$(REPEATS),$(addsuff
 $(EXPERIMENT_REPEATS): %: %/perf.out
 
 $(MEASUREMENTS): EXTRA_ARGS_FOR_MOSALLOC := $(EXTRA_ARGS_FOR_MOSALLOC)
-$(MEASUREMENTS): $(EXPERIMENT_DIR)/layout%: $(LAYOUTS_FILE) $(MOSALLOC_TOOL)
+$(MEASUREMENTS): $(EXPERIMENT_DIR)/layout%: $(LAYOUTS_FILE) | experiments-prerequisites
 	echo ========== [INFO] start producing: $@ ==========
-	mkdir -p $(dir $@)
-	cd $(dir $@)
 	ARGS_FOR_MOSALLOC="$(shell grep layout"$(shell echo $* | cut -d '/' -f 1)" $< | cut -d ':' -f 2)"
-	$(MEASURE_GENERAL_METRICS) $(SET_CPU_MEMORY_AFFINITY) $(BOUND_MEMORY_NODE) \
-		$(RUN_MOSALLOC_TOOL) --library $(MOSALLOC_TOOL) $$ARGS_FOR_MOSALLOC $(EXTRA_ARGS_FOR_MOSALLOC) -- \
-		$(BENCHMARK)
+	if [ -z "$$ARGS_FOR_MOSALLOC" ];
+	then
+		echo "Cannot find the layout configuration to run: $@"
+		exit -1
+	fi
+	$(RUN_BENCHMARK) --submit_command "$(MEASURE_GENERAL_METRICS) $(SET_CPU_MEMORY_AFFINITY) $(BOUND_MEMORY_NODE) \
+		$(RUN_MOSALLOC_TOOL) --library $(MOSALLOC_TOOL) $$ARGS_FOR_MOSALLOC $(EXTRA_ARGS_FOR_MOSALLOC)" -- \
+		$(BENCHMARK_PATH) $(dir $@)
 
 results: $(RESULT_DIR)
 $(RESULTS): LAYOUT_LIST := $(call array_to_comma_separated,$(LAYOUTS))
@@ -50,7 +53,7 @@ $(RESULTS): results/%/mean.csv: experiments/%
 	$(COLLECT_RESULTS_SCRIPT) --experiments_root=$< --repeats=$(NUM_OF_REPEATS) \
 		--layouts=$(LAYOUT_LIST) --output_dir=$(dir $@)
 
-DELETED_TARGETS := $(EXPERIMENT_REPEATS) $(EXPERIMENTS)
+DELETED_TARGETS := $(EXPERIMENTS) $(EXPERIMENT_REPEATS) $(LAYOUTS_FILE)
 CLEAN_TARGETS := $(addsuffix /clean,$(DELETED_TARGETS))
 $(CLEAN_TARGETS): %/clean: %/delete
 $(MODULE_NAME)/clean: $(CLEAN_TARGETS)
