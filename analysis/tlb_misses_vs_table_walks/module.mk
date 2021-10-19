@@ -20,14 +20,14 @@ $(PER_BENCHMARK_TARGETS): %: %/scatter.pdf
 
 #$(SCATTER_CHARTS): %/scatter.pdf: %/tlb_misses_scatter.csv %/table_walks_scatter.csv
 $(SCATTER_CHARTS): %/scatter.pdf: %/tlb_misses_scatter.csv
-	gnuplot -e "input_file='$^'" -e "output_file='$@'" -e "size_ratio=1" -e "x_label='tlb misses'" $(SCATTER_PLOT_SCRIPT)
+	gnuplot -e "input_file='$^'" -e "output_file='$@'" -e "size_ratio=1" -e "x_label='tlb misses'" $(SCATTER_PLOT)
 
 $(TLB_MISSES_SCATTER_FILES): %/tlb_misses_scatter.csv: %/mean.csv
-	$(ARRANGE_DATA_TO_PLOT_SCRIPT)  \
+	$(ARRANGE_DATA_TO_PLOT)  \
 		--x-metric='tlb_misses' --mean_file=$< --output=$@
 
 $(TABLE_WALKS_SCATTER_FILES): %/table_walks_scatter.csv: %/mean.csv
-	$(ARRANGE_DATA_TO_PLOT_SCRIPT) --normalize='by-y' \
+	$(ARRANGE_DATA_TO_PLOT) --normalize='by-y' \
 		--x-metric='walk_cycles' --mean_file=$< --output=$@
 
 $(MEAN_FILES): $(MODULE_NAME)/%/mean.csv: $(RESULTS_ROOT)/%/mean.csv

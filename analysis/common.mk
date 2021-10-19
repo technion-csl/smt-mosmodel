@@ -20,43 +20,43 @@ $(MODULE_NAME)%: ALL_CHARTS := $(ALL_CHARTS)
 $(MODULE_NAME): $(ALL_CSVS) $(ALL_CHARTS)
 
 $(POLY_CHART): $(SCATTER_FILE)
-	$(POLY_PLOT_SCRIPT) --metric='cpu-cycles' \
+	$(POLY_PLOT) --metric='cpu-cycles' \
 		--input_file=$< --output_file=$@ > $(dir $@)/poly.csv
 
 $(NORMALIZED_SCATTER_CHART): $(NORMALIZED_SCATTER_FILE)
-	gnuplot -e "input_file='$<'" -e "output_file='$@'" $(SCATTER_PLOT_SCRIPT)
+	gnuplot -e "input_file='$<'" -e "output_file='$@'" $(SCATTER_PLOT)
 
 $(SCATTER_CHART): $(SCATTER_FILE)
-	gnuplot -e "input_file='$<'" -e "output_file='$@'" $(SCATTER_PLOT_SCRIPT)
+	gnuplot -e "input_file='$<'" -e "output_file='$@'" $(SCATTER_PLOT)
 
 $(ALL_REPEATS_CHART): $(ALL_REPEATS_SCATTER_FILE)
 	if [[ $(NUM_OF_REPEATS) != 1 ]]; then
-	gnuplot -e "input_file='$<'" -e "output_file='$@'" $(SCATTER_PLOT_SCRIPT)
+	gnuplot -e "input_file='$<'" -e "output_file='$@'" $(SCATTER_PLOT)
 	fi
 
 $(WHISKER_CHART): $(WHISKER_FILE)
 	if [[ $(NUM_OF_REPEATS) != 1 ]]; then
-	gnuplot -e "input_file='$<'" -e "output_file='$@'" $(WHISKER_PLOT_SCRIPT)
+	gnuplot -e "input_file='$<'" -e "output_file='$@'" $(WHISKER_PLOT)
 	fi
 
 $(NORMALIZED_SCATTER_FILE): analysis/%/normalized_scatter.csv: results/%/mean.csv
 	mkdir -p $(dir $@)
-	$(ARRANGE_DATA_TO_PLOT_SCRIPT) --normalize='by-y' --y-metric='cpu-cycles' \
+	$(ARRANGE_DATA_TO_PLOT) --normalize='by-y' --y-metric='cpu-cycles' \
 		--mean_file=$< --output=$@
 
 $(SCATTER_FILE): analysis/%/scatter.csv: results/%/mean.csv
 	mkdir -p $(dir $@)
-	$(ARRANGE_DATA_TO_PLOT_SCRIPT) --y-metric='cpu-cycles' \
+	$(ARRANGE_DATA_TO_PLOT) --y-metric='cpu-cycles' \
 		--mean_file=$< --output=$@
 
 $(WHISKER_FILE): analysis/%/whisker.csv: results/%/mean.csv results/%/std.csv
 	mkdir -p $(dir $@)
-	$(ARRANGE_DATA_TO_PLOT_SCRIPT) --normalize='by-y' --y-metric='cpu-cycles' \
+	$(ARRANGE_DATA_TO_PLOT) --normalize='by-y' --y-metric='cpu-cycles' \
 		--mean_file=$(word 1,$^) --std_file=$(word 2,$^) --output=$@
 
 $(ALL_REPEATS_SCATTER_FILE): analysis/%/all_repeats_scatter.csv: results/%/all_repeats.csv
 	mkdir -p $(dir $@)
-	$(ARRANGE_DATA_TO_PLOT_SCRIPT) --y-metric='cpu-cycles' \
+	$(ARRANGE_DATA_TO_PLOT) --y-metric='cpu-cycles' \
 		--mean_file=$< --output=$@
 
 $(MODULE_NAME)/clean:

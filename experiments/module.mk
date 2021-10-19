@@ -16,13 +16,13 @@ export MOSALLOC_TOOL := $(ROOT_DIR)/mosalloc/src/libmosalloc.so
 
 ##### scripts
 
-COLLECT_RESULTS_SCRIPT := $(SCRIPTS_ROOT_DIR)/collectResults.py
+COLLECT_RESULTS := $(SCRIPTS_ROOT_DIR)/collectResults.py
 CHECK_PARANOID := $(SCRIPTS_ROOT_DIR)/checkParanoid.sh
 SET_THP := $(SCRIPTS_ROOT_DIR)/setTransparentHugePages.sh
 SET_CPU_MEMORY_AFFINITY := $(SCRIPTS_ROOT_DIR)/setCpuMemoryAffinity.sh
 MEASURE_GENERAL_METRICS := $(SCRIPTS_ROOT_DIR)/measureGeneralMetrics.sh
-RUN_BENCHMARK_SCRIPT := $(SCRIPTS_ROOT_DIR)/runBenchmark.py
-COLLECT_MEMORY_FOOTPRINT_SCRIPT := $(SCRIPTS_ROOT_DIR)/collectMemoryFootprint.py
+RUN_BENCHMARK := $(SCRIPTS_ROOT_DIR)/runBenchmark.py
+COLLECT_MEMORY_FOOTPRINT := $(SCRIPTS_ROOT_DIR)/collectMemoryFootprint.py
 
 ###### global constants
 
@@ -71,7 +71,7 @@ test-run-mosalloc-tool: $(RUN_MOSALLOC_TOOL) $(MOSALLOC_TOOL)
 MEMORY_FOOTPRINT_FILE := $(MODULE_NAME)/memory_footprint.csv
 
 $(MEMORY_FOOTPRINT_FILE): | experiments/memory_footprint/layout4kb
-	$(COLLECT_MEMORY_FOOTPRINT_SCRIPT) $| --output=$@
+	$(COLLECT_MEMORY_FOOTPRINT) $| --output=$@
 
 $(MODULE_NAME)/clean:
 	rm -f $(MEMORY_FOOTPRINT_FILE)

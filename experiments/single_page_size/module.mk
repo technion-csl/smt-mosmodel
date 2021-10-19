@@ -5,9 +5,9 @@ EXTRA_ARGS_FOR_MOSALLOC := --analyze
 
 include $(EXPERIMENTS_TEMPLATE)
 
-CREATE_SINGLE_PAGE_LAYOUTS_SCRIPT := $(MODULE_NAME)/createLayouts.py
+CREATE_SINGLE_PAGE_LAYOUTS := $(MODULE_NAME)/createLayouts.py
 $(LAYOUTS_FILE): $(MEMORY_FOOTPRINT_FILE)
-	$(CREATE_SINGLE_PAGE_LAYOUTS_SCRIPT) --memory_footprint=$< --output=$@
+	$(CREATE_SINGLE_PAGE_LAYOUTS) --memory_footprint=$< --output=$@
 
 # undefine LAYOUTS to allow next makefiles to use the defaults LAYOUTS
 undefine EXTRA_ARGS_FOR_MOSALLOC

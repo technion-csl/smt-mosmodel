@@ -48,7 +48,7 @@ $(RESULTS): LAYOUT_LIST := $(call array_to_comma_separated,$(LAYOUTS))
 $(RESULT_DIR): $(RESULTS)
 $(RESULTS): results/%/mean.csv: experiments/%
 	mkdir -p $(dir $@)
-	$(COLLECT_RESULTS_SCRIPT) --experiments_root=$< --repeats=$(NUM_OF_REPEATS) \
+	$(COLLECT_RESULTS) --experiments_root=$< --repeats=$(NUM_OF_REPEATS) \
 		--layouts=$(LAYOUT_LIST) --output_dir=$(dir $@)
 
 DELETED_TARGETS := $(EXPERIMENTS) $(EXPERIMENT_REPEATS) $(LAYOUTS_FILE)
