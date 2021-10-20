@@ -6,9 +6,10 @@ EXTRA_ARGS_FOR_MOSALLOC := --analyze
 
 include $(EXPERIMENTS_TEMPLATE)
 
-CREATE_SINGLE_PAGE_LAYOUTS_SCRIPT := $(MODULE_NAME)/createLayouts.py
-$(LAYOUT_FILES): $(MAX_RES_MEMORY_FILE)
-	$(CREATE_SINGLE_PAGE_LAYOUTS_SCRIPT) --max_res_memory_kb=`cat $<` --mmap_pool_limit=$(MMAP_POOL_LIMIT) --output=$@
+CREATE_SINGLE_PAGE_LAYOUTS := $(MODULE_NAME)/createLayouts.py
+$(LAYOUT_FILES): $(MEMORY_FOOTPRINT_FILE)
+	$(CREATE_SINGLE_PAGE_LAYOUTS) --memory_footprint=$< \
+		--output=$(dir $@)/..
 
 
 $(MODULE_NAME)/clean:

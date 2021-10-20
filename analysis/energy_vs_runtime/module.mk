@@ -19,14 +19,14 @@ PER_BENCHMARK_TARGETS := $(addprefix $(MODULE_NAME)/,$(INTERESTING_BENCHMARKS))
 $(PER_BENCHMARK_TARGETS): %: %/scatter.pdf
 
 $(SCATTER_CHARTS): %/scatter.pdf: %/energy_scatter.csv %/runtime_scatter.csv
-	gnuplot -e "input_file='$^'" -e "output_file='$@'" $(SCATTER_PLOT_SCRIPT)
+	gnuplot -e "input_file='$^'" -e "output_file='$@'" $(SCATTER_PLOT)
 
 $(ENERGY_SCATTER_FILES): %/energy_scatter.csv: %/mean.csv
-	$(ARRANGE_DATA_TO_PLOT_SCRIPT) --normalize='separate' \
+	$(ARRANGE_DATA_TO_PLOT) --normalize='separate' \
 		--y-metric='power/energy-pkg/' --mean_file=$< --output=$@
 
 $(RUNTIME_SCATTER_FILES): %/runtime_scatter.csv: %/mean.csv
-	$(ARRANGE_DATA_TO_PLOT_SCRIPT) --normalize='by-y' \
+	$(ARRANGE_DATA_TO_PLOT) --normalize='by-y' \
 		--y-metric='cpu-cycles' --mean_file=$< --output=$@
 
 $(MEAN_FILES): $(MODULE_NAME)/%/mean.csv: | $(EXPERIMENTS_ROOT)/%

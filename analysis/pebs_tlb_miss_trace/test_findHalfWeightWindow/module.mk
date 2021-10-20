@@ -7,7 +7,7 @@ TEST_OUT_FILES := $(subst input,output,$(TEST_INP_FILES))
 $(MODULE_NAME): $(TEST_OUT_FILES)
 
 $(TEST_OUT_FILES): $(MODULE_NAME)/output%: $(MODULE_NAME)/input%
-	$(FIND_WINDOW_SCRIPT) --input=$< --output=$@
+	$(FIND_WINDOW) --input=$< --output=$@
 	diff $@ $(subst output,expected_output,$@)
 	rm -f $@
 

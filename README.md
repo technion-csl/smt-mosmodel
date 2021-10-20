@@ -24,7 +24,6 @@ Before you start building and running Mosmodel, you need to set and configure th
         - `pre_run.sh` - a script running before the "actual" benchmark is measured.
         - `run.sh` - the main script of the benchmark which will be measured with perf.
         - `post_run.sh` - a script running after the "actual" benchmark is measured.
-    - `MMAP_POOL_LIMIT` (defaults to 100MB): Mosmodel assumes that the benchmark allocates no more than 100MB through direct `mmap()` calls. In case your benchmark allocates more than 100MB, please increase the `MMAP_POOL_LIMIT` makefile variable.
 
 # Mosmodel Directory Structure
 - `mosalloc` - a git submodule pointing to the Mosalloc memory allocator.
@@ -35,7 +34,5 @@ Before you start building and running Mosmodel, you need to set and configure th
 - `client_server_example` - a demo of how to create a benchmark infrastructure (`pre_run.sh`, `run.sh`, `post_run.sh`) for a client-server workloads, e.g., memcached.
 
 # Limitations (Future Work)
-- Currently, Mosmodel scans only Mosalloc layouts on the `brk()` pool because it assumes that the benchmark allocates memory through `malloc()`. In case the benchmark uses different allocators (than glibc `malloc()`), then this assumption may not hold. We need to customize the python scripts and makefile infrastructure that create the Mosalloc layouts. The first step toward this goal is running the `mmap_vs_brk` experiments to measure the performance impact of hugepages in the `mmap()` and `brk()` pools, respectively.
-- Currently, our scripts determine the memory pool sizes based on the _physical_ memory consumption. The problem is that Linux allocates memory lazily, but Mosalloc allocates memory eagerly. So if, for example, the program malloc()'s a 1GB array and never touches it, the physical memory footprint will be only a few KBs, and the memory pools will be too small, causing a segfault at runtime.
-- For some workloads, the Sliding Window layouts provide little value. For example, the toy benchmark accesses memory randomly so its TLB miss trace is flat, and sliding a constant-sized window over its memory space yields different layouts with nearly identical performance.
+- Currently, Mosmodel scans only Mosalloc layouts on the `brk()` pool because it assumes that the benchmark allocates memory through `malloc()`. In case the benchmark uses different allocators (than glibc `malloc()`), then this assumption may not hold. We need to customize the python scripts and makefile infrastructure that create the Mosalloc layouts. The first step toward this goal is measuring the relative performance impact of hugepages in the `mmap()` and `brk()` pools, respectively.
 

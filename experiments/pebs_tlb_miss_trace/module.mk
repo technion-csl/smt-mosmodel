@@ -13,7 +13,7 @@ PEBS_TLB_MISS_TRACE_OUTPUT := $(PEBS_EXP_OUT_DIR)/perf.data
 $(PEBS_EXP_OUT_DIR): $(PEBS_TLB_MISS_TRACE_OUTPUT)
 $(MODULE_NAME): $(PEBS_TLB_MISS_TRACE_OUTPUT)
 
-$(PEBS_TLB_MISS_TRACE_OUTPUT): experiments/single_page_size/layouts.txt | experiments-prerequisites 
+$(PEBS_TLB_MISS_TRACE_OUTPUT): experiments/single_page_size/layouts/layout4kb.csv | experiments-prerequisites 
 	$(RUN_BENCHMARK) --exclude_files=$(notdir $@) --submit_command \
 		"$(PERF_MEM_RECORD_CMD) -- $(RUN_MOSALLOC_TOOL) --analyze -cpf $(ROOT_DIR)/experiments/single_page_size/layouts/layout4kb.csv --library $(MOSALLOC_TOOL)" \
 		$(BENCHMARK_PATH) $(dir $@)
