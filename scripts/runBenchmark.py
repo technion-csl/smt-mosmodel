@@ -27,12 +27,12 @@ class BenchmarkRun:
         if hasattr(self, "_log_file"):
             self._log_file.close()
 
-    def warmup(self):
+    def pre_run(self):
         print('warming up before running...')
         os.chdir(self._output_dir)
-        # the warmup script will read input files to force them to reside
+        # the pre_run script will read input files to force them to reside
         # in the page-cache before run() is invoked.
-        subprocess.check_call('./warmup.sh', stdout=self._log_file, stderr=self._log_file)
+        subprocess.check_call('./pre_run.sh', stdout=self._log_file, stderr=self._log_file)
 
     def run(self, num_threads, submit_command):
         print('running the benchmark ' + self._benchmark_dir + '...')
@@ -52,10 +52,10 @@ class BenchmarkRun:
         print('sleeping a bit to let the filesystem recover...')
         time.sleep(3) # seconds
 
-    def validate(self):
+    def post_run(self):
         print('validating the run outputs...')
         os.chdir(self._output_dir)
-        subprocess.check_call('./validate.sh', stdout=self._log_file, stderr=self._log_file)
+        subprocess.check_call('./post_run.sh', stdout=self._log_file, stderr=self._log_file)
 
     def clean(self, exclude_files=[], threshold=1024*1024):
         print('cleaning large files from the output directory...')
@@ -73,7 +73,7 @@ def getCommandLineArguments():
     parser = argparse.ArgumentParser(description='This python script runs a single benchmark, \
             possibly with a prefixing submit command like \"perf stat --\". \
             The script creates a new output directory in the current working directory, \
-            copy the benchmark files there, and then warmup, run, and validate the benchmark. \
+            copy the benchmark files there, and then pre_run, run, and post_run the benchmark. \
             Finally, the script deletes large files (> 1MB) residing in the output directory.')
     parser.add_argument('-n', '--num_threads', type=int, default=4,
             help='the number of threads (for multi-threaded benchmark)')
@@ -84,7 +84,7 @@ def getCommandLineArguments():
     parser.add_argument('-f', '--force', action='store_true', default=False,
             help='run the benchmark anyway even if the output directory already exists')
     parser.add_argument('benchmark_dir', type=str, help='the benchmark directory, must contain three \
-            bash scripts: warmup.sh, run.sh, and validate.sh')
+            bash scripts: pre_run.sh, run.sh, and post_run.sh')
     parser.add_argument('output_dir', type=str, help='the output directory which will be created for \
             running the benchmark on a clean slate')
     args = parser.parse_args()
@@ -98,9 +98,9 @@ if __name__ == "__main__":
         print('You can use the \'-f\' flag to suppress this message and run the benchmark anyway.')
     else:
         benchmark_run = BenchmarkRun(args.benchmark_dir, args.output_dir)
-        benchmark_run.warmup()
+        benchmark_run.pre_run()
         benchmark_run.run(args.num_threads, args.submit_command)
         benchmark_run.wait()
-        benchmark_run.validate()
+        benchmark_run.post_run()
         benchmark_run.clean(args.exclude_files)
 
