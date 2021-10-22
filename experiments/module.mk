@@ -26,6 +26,7 @@ SET_THP := $(SCRIPTS_ROOT_DIR)/setTransparentHugePages.sh
 SET_CPU_MEMORY_AFFINITY := $(SCRIPTS_ROOT_DIR)/setCpuMemoryAffinity.sh
 MEASURE_GENERAL_METRICS := $(SCRIPTS_ROOT_DIR)/measureGeneralMetrics.sh
 RUN_BENCHMARK := $(SCRIPTS_ROOT_DIR)/runBenchmark.py
+RUN_BENCHMARK_WITH_SLURM := $(SCRIPTS_ROOT_DIR)/runBenchmarkWithSlurm.py
 COLLECT_MEMORY_FOOTPRINT := $(SCRIPTS_ROOT_DIR)/collectMemoryFootprint.py
 
 ###### global constants

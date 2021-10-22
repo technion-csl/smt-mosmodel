@@ -15,10 +15,15 @@ class BenchmarkRun:
             sys.exit('Error: the benchmark path ' + self._benchmark_dir + ' was not found.')
 
         self._output_dir = os.getcwd() + '/' + output_dir
-        print('creating a new output directory', self._output_dir, '...')
-        print('copying the benchmark files to ' + self._output_dir + '...')
-        # symlinks are copied as symlinks with symlinks=True
-        shutil.copytree(self._benchmark_dir, self._output_dir, symlinks=True)
+        if os.path.exists(self._output_dir):
+            print('output directory', self._output_dir, 'already exists...')
+            self._does_output_directory_exist = True
+        else:
+            print('creating a new output directory', self._output_dir, '...')
+            print('copying the benchmark files to ' + self._output_dir + '...')
+            # symlinks are copied as symlinks with symlinks=True
+            shutil.copytree(self._benchmark_dir, self._output_dir, symlinks=True)
+            self._does_output_directory_exist = False
 
         log_file_name = self._output_dir + '/benchmark.log'
         self._log_file = open(log_file_name, 'w')
@@ -26,6 +31,9 @@ class BenchmarkRun:
     def __del__(self):
         if hasattr(self, "_log_file"):
             self._log_file.close()
+
+    def doesOutputDirectoryExist(self):
+        return self._does_output_directory_exist
 
     def pre_run(self):
         print('warming up before running...')
