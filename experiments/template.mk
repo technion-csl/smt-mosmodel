@@ -12,6 +12,7 @@ NUM_OF_REPEATS := 4
 endif # ifndef NUM_OF_REPEATS
 
 $(MODULE_NAME)% : NUM_LAYOUTS := $(NUM_LAYOUTS)
+$(MODULE_NAME): EXTRA_ARGS_FOR_MOSALLOC := $(EXTRA_ARGS_FOR_MOSALLOC)
 
 EXPERIMENT_DIR := $(MODULE_NAME)
 RESULT_DIR := $(subst experiments,results,$(EXPERIMENT_DIR))
@@ -35,8 +36,6 @@ MEASUREMENTS := $(addsuffix /perf.out,$(EXPERIMENT_REPEATS))
 $(EXPERIMENT_DIR): $(MEASUREMENTS)
 $(EXPERIMENTS): $(EXPERIMENT_DIR)/layout%: $(foreach repeat,$(REPEATS),$(addsuffix /$(repeat)/perf.out,$(EXPERIMENT_DIR)/layout%))
 $(EXPERIMENT_REPEATS): %: %/perf.out
-
-$(MEASUREMENTS): EXTRA_ARGS_FOR_MOSALLOC := $(EXTRA_ARGS_FOR_MOSALLOC)
 
 define MEASUREMENTS_template =
 $(EXPERIMENT_DIR)/$(1)/$(2)/perf.out: $(EXPERIMENT_DIR)/layouts/$(1).csv | experiments-prerequisites 
