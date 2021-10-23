@@ -15,13 +15,8 @@ class Configuration:
     HUGE_2MB_PAGE_SIZE = 2097152
     HUGE_1GB_PAGE_SIZE = 1073741824
 
-    def __init__(self, abs_path, layout_name):
+    def __init__(self):
         self.config = []
-        self.layout_name = layout_name
-        path = os.path.join(abs_path, Configuration.LAYOUT_DIRECTORY)
-        if not os.path.exists(path):
-            os.makedirs(path, exist_ok=True)
-        self.export_file_name = os.path.join(path, layout_name + ".csv")
 
     def addWindow(self, type, page_size, start_offset, end_offset):
         row = {
@@ -71,7 +66,7 @@ class Configuration:
         return windows
 
 
-    def exportToCSV(self):
+    def exportToCSV(self, abs_path, layout_name):
         df = pd.DataFrame(self.config, index=None)
         # rearrange columns
         df = df[[Configuration.TYPE, Configuration.PAGE_SIZE,
@@ -82,20 +77,10 @@ class Configuration:
         #windows = windows.append(Configuration.mergeAdjacentWindows(df, Configuration.TYPE_MMAP, Configuration.HUGE_2MB_PAGE_SIZE))
         #windows = windows.append(Configuration.mergeAdjacentWindows(df, Configuration.TYPE_MMAP, Configuration.HUGE_1GB_PAGE_SIZE))
         #df = pd.DataFrame(windows, index=None)
-        windows.to_csv(self.export_file_name, index=None)
+        path = os.path.join(abs_path, Configuration.LAYOUT_DIRECTORY)
+        if not os.path.exists(path):
+            os.makedirs(path, exist_ok=True)
+        export_file_name = os.path.join(path, layout_name + ".csv")
+        windows.to_csv(export_file_name, index=None)
 
 
-# from utils import *
-# path = os.path.dirname(__file__)
-# data = Configuration(path, "layout1")
-
-
-# data.setPoolsSize(gb, mb*2, mb*100)
-# data.addWindow(Configuration.TYPE_BRK, gb, 0, gb)
-# data.exportToCSV()
-# data = Configuration(path, "layout2")
-
-
-# data.setPoolsSize(gb, mb*2, mb*100)
-# data.addWindow(Configuration.TYPE_BRK, gb, 0, gb)
-# data.exportToCSV()
