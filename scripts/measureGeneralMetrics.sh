@@ -38,6 +38,8 @@ time_format="seconds-elapsed,%e\nuser-time-seconds,%U\n"
 time_format+="kernel-time-seconds,%S\nmax-resident-memory-kb,%M"
 time_command="time --format=$time_format --output=time.out"
 
+perf_command="$prefix_perf_command --event cpu-cycles,instructions,dtlb_load_misses.miss_causes_a_walk,dtlb_load_misses.stlb_hit,dtlb_load_misses.walk_active,dtlb_store_misses.miss_causes_a_walk,dtlb_store_misses.stlb_hit,dtlb_store_misses.walk_active -- "
+
 submit_command="$perf_command $time_command"
 echo "Running the following command:"
 echo "$submit_command $command"
