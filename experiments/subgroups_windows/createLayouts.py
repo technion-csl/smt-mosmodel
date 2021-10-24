@@ -71,7 +71,7 @@ random.seed(0)
 if num_huge_pages >= args.num_layouts:
     step_size = num_huge_pages / args.num_layouts
     for i in range(1, args.num_layouts+1):
-        configuration = Configuration(args.output, 'layout'+str(i))
+        configuration = Configuration()
         configuration.setPoolsSize(
                 brk_size=brk_footprint,
                 file_size=1*gb,
@@ -85,7 +85,7 @@ if num_huge_pages >= args.num_layouts:
                     page_size=window_page_size,
                     start_offset=page_offset,
                     end_offset=page_offset + window_page_size)
-        configuration.exportToCSV()
+        configuration.exportToCSV(args.output, 'layout'+str(i))
 
 # case 2: window_huge_pages < num_layouts
 # in this case, select candidates for each n and l

@@ -25,7 +25,7 @@ total_pages = math.floor(brk_footprint / page_size)
 step_size = 100 / args.num_layouts
 
 def writeLayout(num_layout, windows, output):
-    configuration = Configuration(output, 'layout'+str(num_layout))
+    configuration = Configuration()
     configuration.setPoolsSize(
             brk_size=brk_footprint,
             file_size=1*gb,
@@ -36,7 +36,7 @@ def writeLayout(num_layout, windows, output):
                 page_size=page_size,
                 start_offset=w * page_size,
                 end_offset=(w+1) * page_size)
-    configuration.exportToCSV()
+    configuration.exportToCSV(output, 'layout'+str(num_layout))
 
 def findTlbCoverageWindows(df, tlb_coverage_percentage):
     epsilon = 0.5

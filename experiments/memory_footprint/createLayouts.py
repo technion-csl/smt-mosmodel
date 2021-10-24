@@ -24,9 +24,9 @@ brk_pool_size = round_down(mem_max_size, 4096)
 mmap_pool_size = brk_pool_size
 
 
-configuration = Configuration(args.output, "layout4kb")
+configuration = Configuration()
 configuration.setPoolsSize(brk_size=brk_pool_size,
                            file_size=1*gb,
                            mmap_size=mmap_pool_size)
-configuration.exportToCSV()
+configuration.exportToCSV(args.output, "layout4kb")
 
