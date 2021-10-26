@@ -1,4 +1,5 @@
 MODULE_NAME := experiments/single_page_size
+#LAYOUTS := layout1gb layout2mb layout4kb
 LAYOUTS := layout2mb layout4kb
 
 EXTRA_ARGS_FOR_MOSALLOC := --analyze
