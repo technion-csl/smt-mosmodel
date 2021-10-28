@@ -31,25 +31,24 @@ if __name__ == "__main__":
 
     slurm_command = 'srun --ntasks=1 --ntasks-per-socket=1 --cpu_bind=sockets --mem-bind=local -- '
 
-    if os.path.exists(args.output_dir):
-        print('Skipping the run because output directory', args.output_dir, 'already exists.')
-        print('You can use the \'-f\' flag to suppress this message and run the benchmark anyway.')
-    else:
-        repeated_runs = [BenchmarkRun(args.benchmark_dir, args.output_dir +'/repeat'+str(i+1) )
-                for i in range(args.num_repeats)]
-        should_pre_run = any([not run.doesOutputDirectoryExist() for run in repeated_runs])
-        if should_pre_run:
-            repeated_runs[0].pre_run() # pre_run only once for all repeats
+    repeated_runs = [BenchmarkRun(args.benchmark_dir, args.output_dir +'/repeat'+str(i+1) )
+            for i in range(args.num_repeats)]
+    should_pre_run = any([not run.doesOutputDirectoryExist() for run in repeated_runs])
+    if should_pre_run:
+        repeated_runs[0].pre_run() # pre_run only once for all repeats
 
-        for run in repeated_runs: # run for each repeat
-            if not run.doesOutputDirectoryExist():
-                run.run(args.num_threads, slurm_command + args.submit_command)
+    for run in repeated_runs: # run for each repeat
+        if not run.doesOutputDirectoryExist() or args.force:
+            run.run(args.num_threads, slurm_command + args.submit_command)
+        else:
+            print('Skipping the run because output directory', run._output_dir, 'already exists.')
+            print('You can use the \'-f\' flag to suppress this message and run the benchmark anyway.')
 
-        for run in repeated_runs: # wait, post_run and clean for each repeat
-            if not run.doesOutputDirectoryExist():
-                run.wait()
-                run.post_run()
-                run.clean(args.exclude_files)
+    for run in repeated_runs: # wait, post_run and clean for each repeat
+        if not run.doesOutputDirectoryExist():
+            run.wait()
+            run.post_run()
+            run.clean(args.exclude_files)
 
 
 
