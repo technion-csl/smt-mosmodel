@@ -104,11 +104,12 @@ def calculatePageWalkLatency(df, pages, pebs_df):
     walk_cycles = df['walk_cycles']
     return walk_cycles / total_misses
 
-def getLayoutHugepages(layout, layouts_dir):
-    #FIXME don't hardcode the path
-    if layout.find('4kb') > 0 or layout.find('2mb') > 0:
-        layouts_dir = 'experiments/single_page_size'
-    df = pd.read_csv('{dir}/layouts/{file}.csv'.format(dir=layouts_dir, file=layout))
+def getLayoutHugepages(result_df, experiments_root_dir):
+    layout_file = str.format('{exp_root}/{exp_dir}/layouts/{layout}.csv',
+            exp_root=experiments_root_dir,
+            exp_dir=result_df['experiment'],
+            layout=result_df['layout'])
+    df = pd.read_csv(layout_file)
     df = df[df['type'] == 'brk']
     df = df[df['pageSize'] == 2097152]
     pages = []
@@ -122,8 +123,9 @@ def getLayoutHugepages(layout, layouts_dir):
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('-m', '--memory_footprint', default='memory_footprint.txt')
-parser.add_argument('-s', '--single_page_size_results', default='results/single_page_size/mean.csv')
-parser.add_argument('-g', '--smart_genetic_results', default='results/smart_genetic_scan/mean.csv')
+parser.add_argument('-r', '--results_root_dir', default='results')
+parser.add_argument('-e', '--experiments_root_dir', default='experiments')
+parser.add_argument('-f', '--mean_file_name', default='mean.csv')
 parser.add_argument('-b', '--pebs_mem_bins', required=True)
 parser.add_argument('-l', '--layout', required=True)
 parser.add_argument('-d', '--layouts_dir', required=True)
@@ -150,36 +152,38 @@ mem_bins_df = mem_bins_df.sort_values('MISS_RATIO', ascending=False)
 mem_bins_df['REVISED_MISS_RATIO'] = mem_bins_df['MISS_RATIO']
 '''
 
-# read single-page-siez mean file
-sp_df = loadDataframe(args.single_page_size_results)
-assert(sp_df.layout.str.findall('4kb').sum())
-assert(sp_df.layout.str.findall('2mb').sum())
+df = None
+for root, dirs, files in os.walk(args.results_root_dir):
+    if args.mean_file_name in files:
+        exp_df = loadDataframe(root + '/' + args.mean_file_name)
+        if root.startswith(args.results_root_dir + '/'):
+            experiment = root.replace(args.results_root_dir + '/', '', 1)
+        else:
+            experiment = root.replace(args.results_root_dir, '', 1)
+        exp_df['experiment'] = experiment
+        if df is None:
+            df = exp_df
+        else:
+            df = df.append(exp_df)
 
-from os import path
-if path.exists(args.smart_genetic_results):
-    # read smart_genetic_window mean file
-    gen_df = loadDataframe(args.smart_genetic_results)
-    # append mean files
-    gen_df = sp_df.append(gen_df)
-else:
-    gen_df= sp_df
-df = gen_df.sort_values('walk_cycles').reset_index()
+df = df.sort_values('walk_cycles').reset_index()
 
 # find the maximum gap of walk-cycles between measurements
 max_gap_idx = df['walk_cycles'].diff().abs().idxmax()
 
-print(df)
-print('max diff between: [',
-        df.iloc[max_gap_idx]['layout'], ' - ', df.iloc[max_gap_idx-1]['layout'], ']')
-
 father = df.iloc[max_gap_idx]
 mother = df.iloc[max_gap_idx-1]
+
+print(str.format('max diff between: [{exp1}:{layout1}] - [{exp2}:{layout2}]',
+    exp1=father['experiment'], layout1=father['layout'],
+    exp2=mother['experiment'], layout2=mother['layout']))
+
 #high_measurement = df.iloc[max_gap_idx]
-father_pages = getLayoutHugepages(father['layout'], args.layouts_dir)
+father_pages = getLayoutHugepages(father, args.experiments_root_dir)
 father_pages.sort()
 
 #low_measurement = df.iloc[max_gap_idx-1]
-mother_pages = getLayoutHugepages(mother['layout'], args.layouts_dir)
+mother_pages = getLayoutHugepages(mother, args.experiments_root_dir)
 mother_pages.sort()
 
 father_page_walk_latency = calculatePageWalkLatency(father, father_pages, mem_bins_df)
