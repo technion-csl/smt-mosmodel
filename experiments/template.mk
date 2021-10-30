@@ -47,19 +47,18 @@ $(EXPERIMENT_DIR)/$(1)/$(2)/perf.out: $(EXPERIMENT_DIR)/layouts/$(1).csv | exper
 endef
 
 define SLURM_EXPS_template =
-$(EXPERIMENT_DIR)/$(1)/$(2)/perf.out: $(EXPERIMENT_DIR)/$(1)
+$(EXPERIMENT_DIR)/$(1)/$(2)/perf.out: %/$(2)/perf.out: $(EXPERIMENT_DIR)/layouts/$(1).csv | experiments-prerequisites 
+	echo ========== [INFO] start producing: $$@ ==========
+	$$(RUN_BENCHMARK_WITH_SLURM) --num_threads=$$(NUMBER_OF_CORES_PER_SOCKET) --num_repeats=$$(NUM_OF_REPEATS) \
+		--submit_command "$$(MEASURE_GENERAL_METRICS)  \
+		$$(RUN_MOSALLOC_TOOL) --library $$(MOSALLOC_TOOL) -cpf $$(ROOT_DIR)/$$< $$(EXTRA_ARGS_FOR_MOSALLOC)" -- \
+		$$(BENCHMARK_PATH) $$*
 endef
 
 ifndef SLURM
 $(foreach layout,$(LAYOUTS),$(foreach repeat,$(REPEATS),$(eval $(call MEASUREMENTS_template,$(layout),$(repeat)))))
 else
 $(foreach layout,$(LAYOUTS),$(foreach repeat,$(REPEATS),$(eval $(call SLURM_EXPS_template,$(layout),$(repeat)))))
-$(EXPERIMENTS): $(EXPERIMENT_DIR)/%: $(EXPERIMENT_DIR)/layouts/%.csv | experiments-prerequisites slurm
-	echo ========== [INFO] start running with slurm: $@ ==========
-	$(RUN_BENCHMARK_WITH_SLURM) --num_threads=$(NUMBER_OF_CORES_PER_SOCKET) --num_repeats=$(NUM_OF_REPEATS) \
-		--submit_command "$(MEASURE_GENERAL_METRICS)  \
-		$(RUN_MOSALLOC_TOOL) --library $(MOSALLOC_TOOL) -cpf ../../layouts/$*.csv $(EXTRA_ARGS_FOR_MOSALLOC)" -- \
-		$(BENCHMARK_PATH) $@
 endif
 
 results: $(RESULT_DIR)

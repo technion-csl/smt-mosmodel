@@ -1,5 +1,6 @@
 MODULE_NAME := analysis
 SUBMODULES := \
+	single_page_size \
 	growing_window_2m \
 	random_window_2m \
 	sliding_window \
