@@ -154,13 +154,19 @@ mem_bins_df['REVISED_MISS_RATIO'] = mem_bins_df['MISS_RATIO']
 
 df = None
 for root, dirs, files in os.walk(args.results_root_dir):
+    # read all mean.csv files under the results root directory
     if args.mean_file_name in files:
+        # load a dataframe rfom this mean.csv file
         exp_df = loadDataframe(root + '/' + args.mean_file_name)
+
+        # add a new column that contains the experiment name (without the results dir suffix)
         if root.startswith(args.results_root_dir + '/'):
             experiment = root.replace(args.results_root_dir + '/', '', 1)
         else:
             experiment = root.replace(args.results_root_dir, '', 1)
         exp_df['experiment'] = experiment
+
+        # merge all mean.csv files into one dataframe
         if df is None:
             df = exp_df
         else:

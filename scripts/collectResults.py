@@ -22,19 +22,28 @@ parser.add_argument('-o', '--output_dir', required=True,
                     help='the directory for all output files')
 args = parser.parse_args()
 
-if args.layouts.replace(' ', '') == '':
-    print('layouts argument is empty, skipping...')
-    sys.exit(0)
+import os
+layout_list = []
+if args.layouts == None:
+    for f in os.scandir(args.experiments_root):
+        if f.is_dir() and f.name.startswith('layout') and not f.name == 'layouts':
+            layout_list.append(f.name)
+    if layout_list == []:
+        print('layouts argument is empty, skipping...')
+        sys.exit(0)
+else:
+    if args.layouts.replace(' ', '') == '':
+        print('layouts argument is empty, skipping...')
+        sys.exit(0)
 
-try:
-    layout_list = args.layouts.strip().split(',')
-except KeyError:
-    sys.exit('Error: could not parse the --layouts argument')
+    try:
+        layout_list = args.layouts.strip().split(',')
+    except KeyError:
+        sys.exit('Error: could not parse the --layouts argument')
 
 single_layout = True if len(layout_list) == 1 else False
 
 # build the output directory
-import os
 if not os.path.exists(args.output_dir):
     os.makedirs(args.output_dir)
 output_dir = args.output_dir + '/'
