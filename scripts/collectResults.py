@@ -80,7 +80,7 @@ if outliers.any().any():
             if not outlier['seconds-elapsed'] and not outlier['ref-cycles'] and not outlier['cpu-cycles']:
                 continue
             l_old_path = args.experiments_root + '/' + layout
-            l_new_path = l_old_path + '.outluer.' + now
+            l_new_path = l_old_path + '.outlier.' + now
             print('remove outlier: ',l_old_path,' --> ',l_new_path)
             os.rename(l_old_path, l_new_path)
         print('The results with outliers have been removed, please try to run them again')

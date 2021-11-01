@@ -39,6 +39,7 @@ def writeLayout(layout, windows, start_offset, output):
                 end_offset=(w+1) * page_size + start_offset)
     configuration.exportToCSV(output, layout)
 
+import math
 import random
 def combineGenes(father_allele, mother_allele, gene_length, gene_weights_df, father_gene_weight, mother_gene_weight):
     gene = []
@@ -49,6 +50,15 @@ def combineGenes(father_allele, mother_allele, gene_length, gene_weights_df, fat
     in_both = list(father_set & mother_set)
     gene += in_both
 
+    only_in_father.sort()
+    only_in_mother.sort()
+    gene += only_in_father[0:math.ceil(len(only_in_father)/2)] + only_in_mother[0:math.ceil(len(only_in_mother)/2)]
+
+    random.seed(len(gene))
+    gene_deviation = random.randint(0, 511)
+
+    return gene, gene_deviation
+'''
     weights_df = pd.DataFrame(columns=['origin', 'id', 'weight'])
     # calculate the gene variance-weight in father
     only_in_father_weight = 0
@@ -86,11 +96,8 @@ def combineGenes(father_allele, mother_allele, gene_length, gene_weights_df, fat
                 gene.append(row['id'])
             if total_weight > gene_expected_weight:
                 break
+'''
 
-    random.seed(len(gene))
-    gene_deviation = random.randint(0, 511)
-
-    return gene, gene_deviation
 
 import numpy as np
 def calculatePageWalkLatency(df, pages, pebs_df):
