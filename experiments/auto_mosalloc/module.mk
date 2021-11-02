@@ -1,7 +1,7 @@
 MODULE_NAME := experiments/auto_mosalloc
 
 AUTO_MOSALLOC_NUM_OF_REPEATS := $(NUMBER_OF_SOCKETS)
-NUM_LAYOUTS := 33
+NUM_LAYOUTS := 55
 NUM_OF_REPEATS := $(AUTO_MOSALLOC_NUM_OF_REPEATS)
 undefine LAYOUTS #allow the template to create new layouts based on the new NUM_LAYOUTS
 
