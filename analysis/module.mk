@@ -7,7 +7,7 @@ SUBMODULES := \
 	linear_models_coeffs \
 	pebs_tlb_miss_trace \
 	subgroups_windows \
-	ratio_window \
+	auto_mosalloc \
 	genetic_scan \
 	smart_genetic_scan \
 	mosmodel \

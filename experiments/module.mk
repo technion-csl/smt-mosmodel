@@ -3,7 +3,7 @@ SUBMODULES := \
 	memory_footprint \
 	single_page_size \
 	pebs_tlb_miss_trace \
-	ratio_window \
+	auto_mosalloc \
 	growing_window_2m \
 	random_window_2m \
 	sliding_window \
