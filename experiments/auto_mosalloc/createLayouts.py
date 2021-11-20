@@ -68,7 +68,9 @@ def _findTlbCoverageWindows(df, tlb_coverage_percentage, prev_windows, epsilon):
             return windows
 
 def _findTlbCoverageWindowsBasedOnSubset(df, tlb_coverage_percentage, base_windows, epsilon):
-    total_weight = sum(base_windows)
+    total_weight = df.query(
+            'PAGE_NUMBER in {base_pages}'.format(base_pages=base_windows))\
+                    ['NUM_ACCESSES'].sum()
     # use a new list instead of using the existing base_windows list to
     # keep it sorted according to page weights
     windows = []
