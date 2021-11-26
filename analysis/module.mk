@@ -8,6 +8,7 @@ SUBMODULES := \
 	pebs_tlb_miss_trace \
 	subgroups_windows \
 	auto_mosalloc \
+	dynamic_auto_mosalloc \
 	genetic_scan \
 	smart_genetic_scan \
 	mosmodel \
