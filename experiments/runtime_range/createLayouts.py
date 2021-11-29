@@ -62,25 +62,25 @@ def calculateTlbCoverage(pebs_df, pages):
                     ['NUM_ACCESSES'].sum()
     return total_weight
 
-def findTlbCoverageWindows(df, tlb_coverage_percentage, base_windows, exclude_pages=None):
+def findTlbCoverageWindows(df, tlb_coverage_percentage, base_pages, exclude_pages=None):
     epsilon = 0.5
     windows = None
     while windows == None:
-        windows = _findTlbCoverageWindows(df, tlb_coverage_percentage, base_windows, epsilon, exclude_pages)
+        windows = _findTlbCoverageWindows(df, tlb_coverage_percentage, base_pages, epsilon, exclude_pages)
         epsilon += 0.5
     return windows
 
-def _findTlbCoverageWindows(df, tlb_coverage_percentage, base_windows, epsilon, exclude_pages):
-    # based on the fact that selected pages in base_windows are ordered
+def _findTlbCoverageWindows(df, tlb_coverage_percentage, base_pages, epsilon, exclude_pages):
+    # based on the fact that selected pages in base_pages are ordered
     # from heaviest to the lightest
-    for i in range(len(base_windows)+1):
-        windows = _findTlbCoverageWindowsBasedOnSubset(df, tlb_coverage_percentage, base_windows[i:], epsilon, exclude_pages)
+    for i in range(len(base_pages)+1):
+        windows = _findTlbCoverageWindowsBasedOnSubset(df, tlb_coverage_percentage, base_pages[i:], epsilon, exclude_pages)
         if windows:
             return windows
 
-def _findTlbCoverageWindowsBasedOnSubset(df, tlb_coverage_percentage, base_windows, epsilon, exclude_pages):
-    total_weight = calculateTlbCoverage(df, base_windows)
-    # use a new list instead of using the existing base_windows list to
+def _findTlbCoverageWindowsBasedOnSubset(df, tlb_coverage_percentage, base_pages, epsilon, exclude_pages):
+    total_weight = calculateTlbCoverage(df, base_pages)
+    # use a new list instead of using the existing base_pages list to
     # keep it sorted according to page weights
     windows = []
     for index, row in df.iterrows():
@@ -88,8 +88,8 @@ def _findTlbCoverageWindowsBasedOnSubset(df, tlb_coverage_percentage, base_windo
         page_number = row['PAGE_NUMBER']
         if exclude_pages and page_number in exclude_pages:
             continue
-        if base_windows and page_number in base_windows:
-            # pages from base_windows already included in the total weight
+        if base_pages and page_number in base_pages:
+            # pages from base_pages already included in the total weight
             # just add them without increasing the total weight
             windows.append(page_number)
             continue
@@ -103,16 +103,17 @@ def _findTlbCoverageWindowsBasedOnSubset(df, tlb_coverage_percentage, base_windo
     if total_weight > (tlb_coverage_percentage + epsilon) \
             or total_weight < (tlb_coverage_percentage - epsilon):
         return []
-    # add tailed pages from base_windows that were not selected (because
+    # add tailed pages from base_pages that were not selected (because
     # we are already reached the goal weight)
-    windows += list(set(base_windows) - set(windows))
+    windows += list(set(base_pages) - set(windows))
     return windows
 
+'''
 import itertools
-def findLayouts(pebs_df, tlb_coverage_percentage, base_windows, exclude_pages, num_layouts, layouts):
+def findLayouts(pebs_df, tlb_coverage_percentage, base_pages, exclude_pages, num_layouts, layouts):
     if len(layouts) == num_layouts:
         return
-    windows = findTlbCoverageWindows(pebs_df, tlb_coverage_percentage, base_windows, exclude_pages)
+    windows = findTlbCoverageWindows(pebs_df, tlb_coverage_percentage, base_pages, exclude_pages)
     if not windows:
         return
     if isPagesListUnique(windows, layouts):
@@ -126,6 +127,36 @@ def findLayouts(pebs_df, tlb_coverage_percentage, base_windows, exclude_pages, n
             findLayouts(pebs_df, tlb_coverage_percentage, subset, cosubset, num_layouts, layouts)
             if len(layouts) == num_layouts:
                 return
+'''
+
+def findLayouts(pebs_df, tlb_coverage_percentage, num_layouts, layouts):
+    random.seed(tlb_coverage_percentage)
+    randomness = 100
+    while len(layouts) < num_layouts:
+        query = pebs_df.query(
+                'NUM_ACCESSES < {weight}'.format(weight=tlb_coverage_percentage))
+        pages = query['PAGE_NUMBER']
+        weights = query['NUM_ACCESSES']
+        total_weight = 0
+        base_pages = []
+        exclude_pages = []
+        for i in range(min(randomness, len(pages))):
+            random_page = random.randint(0, len(pages)-1)
+            select = random.randint(0, 1)
+            if select:
+                if (total_weight + weights[random_page]) < tlb_misses_coverage_ratio:
+                    base_pages.append(random_page)
+                    total_weight += weights[random_page]
+            else:
+                exclude_pages.append(random_page)
+        # find windows based on the random selected pages
+        windows = findTlbCoverageWindows(pebs_df, tlb_coverage_percentage, base_pages, exclude_pages)
+        if windows and isPagesListUnique(windows, layouts):
+            layouts.append(windows)
+            print(windows)
+        if not windows:
+            randomness -= 1
+
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -179,7 +210,8 @@ layouts = []
 #findLayouts(pebs_df, tlb_misses_coverage_ratio, [], [], int(args.num_layouts/2), layouts)
 
 pebs_df = pebs_df.sort_values('NUM_ACCESSES', ascending=False)
-findLayouts(pebs_df, tlb_misses_coverage_ratio, [], [], args.num_layouts, layouts)
+#findLayouts(pebs_df, tlb_misses_coverage_ratio, [], [], args.num_layouts, layouts)
+findLayouts(pebs_df, tlb_misses_coverage_ratio, args.num_layouts, layouts)
 
 layout_num = 1
 for l in layouts:
