@@ -108,7 +108,6 @@ def _findTlbCoverageWindowsBasedOnSubset(df, tlb_coverage_percentage, base_pages
     windows += list(set(base_pages) - set(windows))
     return windows
 
-'''
 import itertools
 def findLayouts(pebs_df, tlb_coverage_percentage, base_pages, exclude_pages, num_layouts, layouts):
     if len(layouts) == num_layouts:
@@ -127,9 +126,8 @@ def findLayouts(pebs_df, tlb_coverage_percentage, base_pages, exclude_pages, num
             findLayouts(pebs_df, tlb_coverage_percentage, subset, cosubset, num_layouts, layouts)
             if len(layouts) == num_layouts:
                 return
-'''
 
-def findLayouts(pebs_df, tlb_coverage_percentage, num_layouts, layouts):
+def findLayoutsRandomly(pebs_df, tlb_coverage_percentage, num_layouts, layouts):
     random.seed(tlb_coverage_percentage)
     randomness = 100
     while len(layouts) < num_layouts:
@@ -206,12 +204,13 @@ print('=====================================')
 
 import math
 layouts = []
-#pebs_df = pebs_df.sort_values('NUM_ACCESSES', ascending=True)
-#findLayouts(pebs_df, tlb_misses_coverage_ratio, [], [], int(args.num_layouts/2), layouts)
+pebs_df = pebs_df.sort_values('NUM_ACCESSES', ascending=True)
+findLayouts(pebs_df, tlb_misses_coverage_ratio, [], [], int(args.num_layouts/2), layouts)
 
 pebs_df = pebs_df.sort_values('NUM_ACCESSES', ascending=False)
-#findLayouts(pebs_df, tlb_misses_coverage_ratio, [], [], args.num_layouts, layouts)
-findLayouts(pebs_df, tlb_misses_coverage_ratio, args.num_layouts, layouts)
+findLayouts(pebs_df, tlb_misses_coverage_ratio, [], [], args.num_layouts, layouts)
+
+#findLayoutsRandomly(pebs_df, tlb_misses_coverage_ratio, args.num_layouts, layouts)
 
 layout_num = 1
 for l in layouts:
