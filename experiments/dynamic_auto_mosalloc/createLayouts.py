@@ -29,15 +29,19 @@ def loadDataframe(mean_file):
     return df
 
 import random
-def writeLayout(layout_name, windows, output):
+def writeLayout(layout_name, windows, output, start_deviation):
     page_size = 1 << 21
-    random.seed(len(windows))
-    start_deviation = random.randint(0, 511)
+    if start_deviation is None:
+        random.seed(len(windows))
+        start_deviation = random.randint(0, 511)
+
     offset_deviation = start_deviation * 4096
 
+    max_end_offset = (max(windows)+1) * page_size + offset_deviation
+    rounded_brk_footprint = max(brk_footprint, max_end_offset)
     configuration = Configuration()
     configuration.setPoolsSize(
-            brk_size=brk_footprint,
+            brk_size=rounded_brk_footprint,
             file_size=1*gb,
             mmap_size=mmap_footprint)
     for w in windows:
@@ -57,12 +61,15 @@ def getLayoutHugepages(layout_name, experiments_root_dir):
     df = df[df['type'] == 'brk']
     df = df[df['pageSize'] == 2097152]
     pages = []
+    offset_deviation = 0
     for index, row in df.iterrows():
         start_page = int(row['startOffset'] / 2097152)
         end_page = int(row['endOffset'] / 2097152)
+        offset_deviation = int(row['startOffset'] % 2097152)
         for i in range(start_page, end_page, 1):
             pages.append(i)
-    return pages
+    start_deviation = offset_deviation / 4096
+    return pages, start_deviation
 
 def calculateTlbCoverage(pebs_df, pages):
     total_weight = pebs_df.query(
@@ -70,12 +77,12 @@ def calculateTlbCoverage(pebs_df, pages):
                     ['NUM_ACCESSES'].sum()
     return total_weight
 
-def findTlbCoverageWindows(df, tlb_coverage_percentage, prev_windows, exclude_pages=None):
+def findTlbCoverageWindows(df, tlb_coverage_percentage, prev_windows, exclude_pages=[]):
+    if tlb_coverage_percentage == 0:
+        return []
     epsilon = 0.5
-    windows = None
-    while windows == None:
-        windows = _findTlbCoverageWindows(df, tlb_coverage_percentage, prev_windows, epsilon, exclude_pages)
-        epsilon += 0.5
+    windows = []
+    windows = _findTlbCoverageWindows(df, tlb_coverage_percentage, prev_windows, epsilon, exclude_pages)
     return windows
 
 def _findTlbCoverageWindows(df, tlb_coverage_percentage, prev_windows, epsilon, exclude_pages):
@@ -138,8 +145,8 @@ brk_footprint = footprint_df['brk-max'][0]
 
 # read single_page_size mean file
 single_page_size_df = loadDataframe(args.single_page_size_mean)
-min_walk_cycles = single_page_size_df[single_page_size_df['layout'] == 'layout4kb'].iloc[0]['walk_cycles']
-max_walk_cycles = single_page_size_df[single_page_size_df['layout'] == 'layout2mb'].iloc[0]['walk_cycles']
+max_walk_cycles = single_page_size_df[single_page_size_df['layout'] == 'layout4kb'].iloc[0]['walk_cycles']
+min_walk_cycles = single_page_size_df[single_page_size_df['layout'] == 'layout2mb'].iloc[0]['walk_cycles']
 walk_cycles_span = max_walk_cycles - min_walk_cycles
 max_x_delta_percentage = 2.5
 max_x_delta = (max_x_delta_percentage/100) * walk_cycles_span
@@ -158,7 +165,13 @@ total_access = pebs_df['NUM_ACCESSES'].sum()
 pebs_df['NUM_ACCESSES'] = pebs_df['NUM_ACCESSES'].mul(100).divide(total_access)
 pebs_df = pebs_df.sort_values('NUM_ACCESSES', ascending=False)
 
+import os.path
 # read measurements
+if not os.path.isfile(args.results_mean_file) or args.layout == 'layout1':
+    # all 4KB layout should be the first layout that this scan algorithm starts with
+    writeLayout(args.layout, [], args.layouts_dir, 0)
+    sys.exit(0)
+
 df = loadDataframe(args.results_mean_file)
 df = df.sort_values('walk_cycles').reset_index()
 
@@ -166,43 +179,39 @@ df = df.sort_values('walk_cycles').reset_index()
 # base layout: the last successful measured layout that has a 2.5% increment
 # from a previous base layout
 layouts = natural_sort(df['layout'].to_list())
+last_layout_name = layouts[-1]
 base_layout_name = layouts[0]
 for l in layouts:
     base_layout = df[df['layout'] == base_layout_name].iloc[0]
     current_layout = df[df['layout'] == l].iloc[0]
-    if current_layout['walk_cycles'] >= base_layout['walk_cycles'] \
-            and current_layout['walk_cycles'] < (base_layout['walk_cycles'] + max_x_delta):
+    if current_layout['walk_cycles'] <= base_layout['walk_cycles'] \
+            and current_layout['walk_cycles'] > (base_layout['walk_cycles'] - max_x_delta):
         base_layout_name = l
 
-base_layout_pages = getLayoutHugepages(base_layout_name, args.layouts_dir)
-last_layout_name = layouts[-1]
-last_layout_pages = getLayoutHugepages(last_layout_name, args.layouts_dir)
+base_layout_pages, base_start_deviation = getLayoutHugepages(base_layout_name, args.layouts_dir)
+last_layout_pages, last_start_deviation = getLayoutHugepages(last_layout_name, args.layouts_dir)
 
-base_layout = df[df['layout'] == base_layout_name]
-last_layout = df[df['layout'] == last_layout_name]
+base_layout = df[df['layout'] == base_layout_name].iloc[0]
+last_layout = df[df['layout'] == last_layout_name].iloc[0]
+
+start_deviation = base_start_deviation
 
 if last_layout_name == base_layout_name:
+    while True:
+        # check if the next point is already there, then if yes move to next one
+        query = df.query('walk_cycles > {current_measurement} and walk_cycles < {next_measurement}'.format(
+            current_measurement = last_layout['walk_cycles'],
+            next_measurement = last_layout['walk_cycles'] - max_x_delta))
+        if query['walk_cycles'].count() > 0:
+            idxmin = query['walk_cycles'].idxmin()
+            last_layout = df.iloc[idxmax]
+        else:
+            break
+    last_layout_pages, start_deviation = getLayoutHugepages(last_layout['layout'], args.layouts_dir)
     # find next layout based on last one + 2.5% of TLB coverage
     tlb_coverage_percentage = calculateTlbCoverage(pebs_df, last_layout_pages) + max_x_delta_percentage
     windows = findTlbCoverageWindows(pebs_df, tlb_coverage_percentage, last_layout_pages)
-    '''
-elif last_layout['walk_cycles'] < base_layout['walk_cycles']:
-    do-something
-elif last_layout['walk_cycles'] > base_layout['walk_cycles'] + max_x_delta:
-    last_layout_pages_set = set(last_layout_pages)
-    base_layout_pages_set = set(base_layout_pages)
-    only_in_last_pages = list(last_layout_pages_set - base_layout_pages_set)
-    in_both_pages = list(last_layout_pages_set & base_layout_pages_set)
-    max_weight = 0
-    min_weight = calculateTlbCoverage(last_layout_pages[0])
-    for p in last_layout_pages:
-        weight = calculateTlbCoverage(p)
-        max_weight = max(max_weight, weight)
-        min_weight = min(min_weight, weight)
-    windows = last_layout_pages.copy()
-    windows.remove(min_weight)
-    '''
-else:
+elif last_layout['walk_cycles'] > base_layout['walk_cycles']:
     # try to lighten the last-layout hugepages
     last_layout_pages_set = set(last_layout_pages)
     base_layout_pages_set = set(base_layout_pages)
@@ -212,31 +221,15 @@ else:
     tlb_coverage_percentage = base_tlb_coverage + max_x_delta_percentage
 
     windows = findTlbCoverageWindows(pebs_df, tlb_coverage_percentage, base_layout_pages, exclude_pages=only_in_last_pages)
-#else:
-#    raise('Error: invalid layouts mean file')
+elif last_layout['walk_cycles'] < base_layout['walk_cycles'] - max_x_delta:
+    windows = last_layout_pages
+    base_tlb_coverage = calculateTlbCoverage(pebs_df, base_layout_pages)
+    last_tlb_coverage = calculateTlbCoverage(pebs_df, last_layout_pages)
+    tlb_coverage_diff_ratio = abs(last_tlb_coverage - base_tlb_coverage) / max_x_delta_percentage
+    start_deviation = int(512 / tlb_coverage_diff_ratio) - 1
+else:
+    raise('Error: invalid layouts mean file')
 
-writeLayout(args.layout, windows, args.layouts_dir)
+writeLayout(args.layout, windows, args.layouts_dir, start_deviation)
 
-'''
-# find the maximum gap of walk-cycles between measurements
-max_gap_idx = df['walk_cycles'].diff().abs().idxmax()
-
-left_index = df.iloc[max_gap_idx-1]
-right_index = df.iloc[max_gap_idx]
-
-left_pages = getLayoutHugepages(left_index, args.experiments_root_dir)
-left_pages.sort()
-left_coverage = findTlbCoverage(pebs_df, left_pages)
-
-
-right_pages = getLayoutHugepages(right_index, args.experiments_root_dir)
-right_pages.sort()
-right_coverage = findTlbCoverage(pebs_df, right_pages)
-
-# build layouts
-prev_windows = #TODO
-tlb_coverage_percentage = right_coverage + max_x_delta_percentage
-windows = findTlbCoverageWindows(pebs_df, tlb_coverage_percentage, prev_windows)
-print('TLB-coverage = {coverage} - Paegs = {pages}'.format(coverage=tlb_coverage_percentage, pages=windows))
-'''
 
