@@ -24,21 +24,35 @@ def plot(mean_files, labels, x_axis, x_label, output_dir, output, equal_axis=Tru
 
     colors = ['b', 'y', 'g', 'r', 'c', 'm', 'k']
     styles = ['o', 'v', '+', '^', 's', '*', '.', 'p', 'x']
-    #read mean files
+    dataframes= []
+    max_runtime = 0
+    # read mean files and calculate max runtime
+    for i in range(len(mean_files)):
+        df = loadDataframe(mean_files[i], output_dir + '/' + labels[i]+'_scatter.csv')
+        dataframes.append(df)
+        max_runtime = max(max_runtime, df['cpu-cycles'].max())
+
+    # plot the mean files
     for i in range(len(mean_files)):
         fmt = colors[-i] + styles[-i]
-        df = loadDataframe(mean_files[i], output_dir + '/' + labels[i]+'_scatter.csv')
+        df = dataframes[i]
+        df['cpu-cycles-ratio'] = df['cpu-cycles'] / max_runtime
         ax.plot(df[x_axis], df[['cpu-cycles']], fmt, label=labels[i])
 
+    ax2 = ax.twinx()
+    mn, mx = ax.get_ylim()
+    ax2.set_ylim(mn / max_runtime, mx / max_runtime)
+    ax2.set_ylabel('runtime [%]')
+    ax.set_ylabel('runtime [cycles]')
+
     plt.gca().yaxis.grid(True)
-    if equal_axis:
-        ax.axis('equal')
+    #if equal_axis:
+    #    ax.axis('equal')
     ax.margins(x=0)
     ax.margins(y=0)
 
     # set x, y labels
     plt.xlabel(x_label)
-    plt.ylabel('cpu cycles')
 
     handles, labels = ax.get_legend_handles_labels()
     #ax.legend(handles, labels, loc='best')

@@ -9,6 +9,7 @@ SUBMODULES := \
 	subgroups_windows \
 	auto_mosalloc \
 	dynamic_auto_mosalloc \
+	runtime_range \
 	genetic_scan \
 	smart_genetic_scan \
 	mosmodel \

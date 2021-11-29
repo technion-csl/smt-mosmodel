@@ -5,6 +5,7 @@ SUBMODULES := \
 	pebs_tlb_miss_trace \
 	auto_mosalloc \
 	dynamic_auto_mosalloc \
+	runtime_range \
 	growing_window_2m \
 	random_window_2m \
 	sliding_window \
