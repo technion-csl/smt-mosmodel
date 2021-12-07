@@ -6,6 +6,7 @@ SUBMODULES := $(addprefix $(MODULE_NAME)/,$(SUBMODULES))
 COUNT_MEMORY_ACCESSES := $(MODULE_NAME)/countMemoryAccesses.py
 PARSE_PERF_MEM_RAW_FILE := $(MODULE_NAME)/parsePerfMem.py
 BIN_ADDRESSES := $(MODULE_NAME)/binAddresses.py
+CALCULATE_PAGES_WEIGHTS := $(MODULE_NAME)/calculatePagesWeights.py
 PLOT_BINS := $(MODULE_NAME)/plotBins.py
 FIND_WINDOW := $(MODULE_NAME)/findWeightedWindow.py
 
@@ -19,6 +20,7 @@ WINDOW_4KB_FILE := $(MODULE_NAME)/hot_region_4kb.txt
 MEM_ACCESSES_FILE := $(MODULE_NAME)/mem_accesses.csv
 MEM_ACCESS_COUNT_FILE := $(MODULE_NAME)/mem_access_count.csv
 MEM_BINS_2MB_CSV_FILE := $(MODULE_NAME)/mem_bins_2mb.csv
+MEM_BINS_2MB_BRK_RATIO_CSV_FILE := $(MODULE_NAME)/mem_bins_2mb_brk.csv
 MEM_BINS_2MB_CHART_FILE := $(MODULE_NAME)/mem_bins_2mb.pdf
 MEM_BINS_4KB_CSV_FILE := $(MODULE_NAME)/mem_bins_4kb.csv
 
@@ -47,6 +49,9 @@ $(MEM_BINS_4KB_CSV_FILE): $(PEBS_EXP_OUT_DIR)
 		$(FIX_DELIM_IN_PERF_MEM_OUTPUT_HEADER) | \
 		$(BIN_ADDRESSES) --width=4096 --output=$@ \
 		--pools_range_file=$^/pools_base_pointers.out
+
+$(MEM_BINS_2MB_BRK_RATIO_CSV_FILE): $(MEM_BINS_2MB_CSV_FILE)
+	$(CALCULATE_PAGES_WEIGHTS) --type brk --input $< --output $@
 
 $(MEM_BINS_2MB_CSV_FILE): $(PEBS_EXP_OUT_DIR)
 	$(PERF_MEM_REPORT_PREFIX) -i $^/perf.data report | \

@@ -8,6 +8,7 @@ SUBMODULES := \
 	pebs_tlb_miss_trace \
 	subgroups_windows \
 	auto_mosalloc \
+	dynamic_grouping \
 	dynamic_auto_mosalloc \
 	runtime_range \
 	genetic_scan \

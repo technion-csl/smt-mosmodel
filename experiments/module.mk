@@ -4,6 +4,7 @@ SUBMODULES := \
 	single_page_size \
 	pebs_tlb_miss_trace \
 	auto_mosalloc \
+	dynamic_grouping \
 	dynamic_auto_mosalloc \
 	runtime_range \
 	growing_window_2m \
