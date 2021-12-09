@@ -5,26 +5,24 @@ sys.path.append(os.path.dirname(sys.argv[0])+"/..")
 from Utils.utils import *
 from Utils.ConfigurationFile import *
 
-import argparse
-parser = argparse.ArgumentParser()
-parser.add_argument('-m', '--memory_footprint', default='memory_footprint.txt')
-parser.add_argument('-i', '--input_file', default='mem_bins_2mb.csv')
-parser.add_argument('-n', '--num_layouts', type=int, default=9)
-parser.add_argument('-o', '--output', required=True)
-args = parser.parse_args()
-
-import pandas as pd
-# read memory-footprints
-footprint_df = pd.read_csv(args.memory_footprint)
-mmap_footprint = footprint_df['anon-mmap-max'][0]
-brk_footprint = footprint_df['brk-max'][0]
-
 import math
-page_size = 1 << 21
-total_pages = math.floor(brk_footprint / page_size)
-step_size = 100 / args.num_layouts
+def writeLayoutAll2mb(layout, output):
+    page_size = 1 << 21
+    brk_pool_size = round_up(brk_footprint, page_size)
+    configuration = Configuration()
+    configuration.setPoolsSize(
+            brk_size=brk_pool_size,
+            file_size=1*gb,
+            mmap_size=mmap_footprint)
+    configuration.addWindow(
+            type=configuration.TYPE_BRK,
+            page_size=page_size,
+            start_offset=0,
+            end_offset=brk_pool_size)
+    configuration.exportToCSV(output, layout)
 
-def writeLayout(num_layout, windows, output):
+def writeLayout(layout, windows, output):
+    page_size = 1 << 21
     configuration = Configuration()
     configuration.setPoolsSize(
             brk_size=brk_footprint,
@@ -36,87 +34,77 @@ def writeLayout(num_layout, windows, output):
                 page_size=page_size,
                 start_offset=w * page_size,
                 end_offset=(w+1) * page_size)
-    configuration.exportToCSV(output, 'layout'+str(num_layout))
+    configuration.exportToCSV(output, layout)
 
-def findTlbCoverageWindows(df, tlb_coverage_percentage, prev_windows):
-    epsilon = 0.5
-    windows = None
-    while windows == None:
-        windows = _findTlbCoverageWindows(df, tlb_coverage_percentage, prev_windows, epsilon)
-        epsilon += 0.5
-    return windows
-
-'''
-import itertools
-def _findTlbCoverageWindows(df, tlb_coverage_percentage, prev_windows, epsilon):
-    # iterate over all subsets of prev_windows starting from the whole set
-    # to find hugepages partitioning that contains a maximal common subset
-    # of the previos layout
-    for subset_size in range(len(prev_windows),-1,-1):
-        for subset in list(itertools.combinations(prev_windows, subset_size)):
-            windows = _findTlbCoverageWindowsBasedOnSubset(df, tlb_coverage_percentage, list(subset), epsilon)
-            if windows:
-                return windows
-'''
-
-def _findTlbCoverageWindows(df, tlb_coverage_percentage, prev_windows, epsilon):
-    # based on the fact that selected pages in prev_windows are ordered
-    # from heaviest to the lightest
-    for i in range(len(prev_windows)+1):
-        windows = _findTlbCoverageWindowsBasedOnSubset(df, tlb_coverage_percentage, prev_windows[i:], epsilon)
-        if windows:
-            return windows
-
-def _findTlbCoverageWindowsBasedOnSubset(df, tlb_coverage_percentage, base_windows, epsilon):
-    total_weight = df.query(
-            'PAGE_NUMBER in {base_pages}'.format(base_pages=base_windows))\
-                    ['NUM_ACCESSES'].sum()
-    # use a new list instead of using the existing base_windows list to
-    # keep it sorted according to page weights
-    windows = []
-    for index, row in df.iterrows():
+def buildGroups(pebs_df, layouts_dir):
+    threshold = 60
+    total_weight = 0
+    pebs_df.sort_values('NUM_ACCESSES', ascending=False, inplace=True)
+    groups = []
+    current_group = []
+    current_total_weight = 0
+    i = 0
+    desired_weights = [30, 20, 10]
+    for index, row in pebs_df.iterrows():
+        page_number = int(row['PAGE_NUMBER'])
         weight = row['NUM_ACCESSES']
-        page_number = row['PAGE_NUMBER']
-        if page_number in base_windows:
-            # pages from base_windows already included in the total weight
-            # just add them without increasing the total weight
-            windows.append(page_number)
-            continue
-        if (total_weight + weight) <= (tlb_coverage_percentage + epsilon):
-            #print('page: {page} - weight: {weight}'.format(page=page_number, weight=weight))
-            total_weight += weight
-            windows.append(page_number)
-        if total_weight >= (tlb_coverage_percentage - epsilon):
+        if current_total_weight >= desired_weights[i]:
+            groups.append(current_group)
+            current_group = []
+            current_total_weight = 0
+            i += 1
+        if i == len(desired_weights):
             break
+        if current_total_weight < desired_weights[i]:
+            current_total_weight += weight
+            current_group.append(page_number)
+    return groups
 
-    if total_weight > (tlb_coverage_percentage + epsilon) \
-            or total_weight < (tlb_coverage_percentage - epsilon):
-        return []
-    # add tailed pages from base_windows that were not selected (because
-    # we are already reached the goal weight)
-    windows += list(set(base_windows) - set(windows))
-    return windows
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument('-m', '--memory_footprint', default='memory_footprint.txt')
+parser.add_argument('-p', '--pebs_mem_bins', default='mem_bins_2mb.csv')
+parser.add_argument('-l', '--layout', required=True)
+parser.add_argument('-d', '--layouts_dir', required=True)
+args = parser.parse_args()
+
+import pandas as pd
+# read memory-footprints
+footprint_pebs_df = pd.read_csv(args.memory_footprint)
+mmap_footprint = footprint_pebs_df['anon-mmap-max'][0]
+brk_footprint = footprint_pebs_df['brk-max'][0]
 
 # read mem-bins
-df = pd.read_csv(args.input_file, delimiter=',')
+pebs_df = pd.read_csv(args.pebs_mem_bins, delimiter=',')
+#pebs_df['PAGE_NUMBER'] = pebs_df['PAGE_NUMBER'].astype(int)
 
-df = df[df['PAGE_TYPE'].str.contains('brk')]
-if df.empty:
+pebs_df = pebs_df[pebs_df['PAGE_TYPE'].str.contains('brk')]
+if pebs_df.empty:
     sys.exit('Input file does not contain page accesses information about the brk pool!')
-df = df[['PAGE_NUMBER', 'NUM_ACCESSES']]
-df = df.reset_index()
+pebs_df = pebs_df[['PAGE_NUMBER', 'NUM_ACCESSES']]
+pebs_df = pebs_df.reset_index()
 
 # transform NUM_ACCESSES from absolute number to percentage
-total_access = df['NUM_ACCESSES'].sum()
-df['NUM_ACCESSES'] = df['NUM_ACCESSES'].mul(100).divide(total_access)
-df = df.sort_values('NUM_ACCESSES', ascending=False)
+total_access = pebs_df['NUM_ACCESSES'].sum()
+pebs_df['NUM_ACCESSES'] = pebs_df['NUM_ACCESSES'].mul(100).divide(total_access)
+pebs_df = pebs_df.sort_values('NUM_ACCESSES', ascending=False)
 
-windows = []
-# build layouts
-for num_layout in range(args.num_layouts):
-    tlb_coverage_percentage = step_size * (num_layout+1)
-    windows = findTlbCoverageWindows(df, tlb_coverage_percentage, windows)
-    print('TLB-coverage = {coverage} - Paegs = {pages}'.format(coverage=tlb_coverage_percentage, pages=windows))
-    writeLayout(num_layout+1, windows, args.output)
-
-
+import itertools
+if args.layout == 'layout1':
+    i = 1
+    groups = buildGroups(pebs_df, args.layouts_dir)
+    for subset_size in range(len(groups)+1):
+        for subset in itertools.combinations(groups, subset_size):
+            windows = []
+            for l in subset:
+                windows += l
+            layout_name = 'layout' + str(i)
+            i += 1
+            print(layout_name)
+            print('#hugepages: '+ str(len(windows)))
+            print('hugepages: ' + str(windows))
+            print('---------------')
+            writeLayout(layout_name, windows, args.layouts_dir)
+    writeLayoutAll2mb('layout'+str(i), args.layouts_dir)
+else:
+    sys.exit(args.layout + ' is not supported yet!')
