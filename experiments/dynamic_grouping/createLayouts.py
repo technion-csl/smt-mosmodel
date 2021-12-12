@@ -43,7 +43,7 @@ def calculateTlbCoverage(pebs_df, pages):
     return total_weight
 
 def buildGroupsSequentially(orig_pebs_df, layouts_dir):
-    pebs_df = orig_pebs_df.copy()
+    pebs_df = orig_pebs_df[['PAGE_NUMBER', 'NUM_ACCESSES']]
     threshold = 60
     pebs_df.sort_values('NUM_ACCESSES', ascending=False, inplace=True)
     groups = []
@@ -195,6 +195,10 @@ if args.layout == 'layout1':
             print('hugepages: ' + str(windows))
             print('---------------')
             writeLayout(layout_name, windows, args.layouts_dir)
-    writeLayoutAll2mb('layout'+str(i), args.layouts_dir)
+    layout_name = 'layout' + str(i)
+    print(layout_name)
+    print('weight: 100%')
+    print('hugepages: all pages')
+    writeLayoutAll2mb(layout_name, args.layouts_dir)
 else:
     sys.exit(args.layout + ' is not supported yet!')
