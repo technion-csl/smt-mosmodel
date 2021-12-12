@@ -44,12 +44,11 @@ def calculateTlbCoverage(pebs_df, pages):
 
 def buildGroupsSequentially(orig_pebs_df, layouts_dir, desired_weights):
     pebs_df = orig_pebs_df[['PAGE_NUMBER', 'NUM_ACCESSES']]
-    threshold = 60
     pebs_df = pebs_df.sort_values('NUM_ACCESSES', ascending=False)
     groups = []
     all_pages = []
     i = 0
-    epsilon = 1
+    epsilon = 3
     for index, row in pebs_df.iterrows():
         current_total_weight = 0
         current_group = []
@@ -82,8 +81,11 @@ def buildGroupsSequentially(orig_pebs_df, layouts_dir, desired_weights):
         found = True
         while right_index < len(query_df) or left_index >= 0:
             # if we already achieved our goal then stop
-            if current_total_weight > (desired_weights[i] - epsilon):
+            if current_total_weight > (desired_weights[i] + epsilon):
                 found = False
+                break
+            elif current_total_weight > (desired_weights[i] - epsilon):
+                found = True
                 break
             # if there is a right side then get its weight
             if right_index != page_index and right_index < len(query_df):
@@ -161,8 +163,8 @@ last_page = int(brk_footprint / 4096)
 
 # read mem-bins
 pebs_df = pd.read_csv(args.pebs_mem_bins, delimiter=',')
-#pebs_df['PAGE_NUMBER'] = pebs_df['PAGE_NUMBER'].astype(int)
 
+# filter and eep only brk pool accesses
 pebs_df = pebs_df[pebs_df['PAGE_TYPE'].str.contains('brk')]
 if pebs_df.empty:
     sys.exit('Input file does not contain page accesses information about the brk pool!')
@@ -181,7 +183,11 @@ if args.layout == 'layout1':
     groups = []
     while len(groups) != 3:
         groups = buildGroupsSequentially(pebs_df, args.layouts_dir, desired_weights)
+        # if we could not find the required groups with current weights
+        # then try to lower bound the desired weights
         desired_weights = [0.9*w for w in desired_weights]
+    # generate a layout for each subgroup of the found groups
+    # there are supposed to be 8 layouts (by the found three groups)
     for subset_size in range(len(groups)+1):
         for subset in itertools.combinations(groups, subset_size):
             windows = []
@@ -195,6 +201,7 @@ if args.layout == 'layout1':
             print('hugepages: ' + str(windows))
             print('---------------')
             writeLayout(layout_name, windows, args.layouts_dir)
+    # and add the 9th layout to be all-2MB
     layout_name = 'layout' + str(i)
     print(layout_name)
     print('weight: 100%')
