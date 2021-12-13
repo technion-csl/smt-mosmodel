@@ -123,14 +123,12 @@ def buildGroupsSequentially(orig_pebs_df, layouts_dir, desired_weights):
             break
     return groups
 
-def buildGroups(pebs_df, layouts_dir):
-    threshold = 60
+def buildGroupsSparsely(pebs_df, layouts_dir, desired_weights):
     pebs_df.sort_values('NUM_ACCESSES', ascending=False, inplace=True)
     groups = []
     current_group = []
     current_total_weight = 0
     i = 0
-    desired_weights = [50, 20, 10]
     for index, row in pebs_df.iterrows():
         page_number = int(row['PAGE_NUMBER'])
         weight = row['NUM_ACCESSES']
@@ -179,7 +177,7 @@ pebs_df = pebs_df.sort_values('NUM_ACCESSES', ascending=False)
 import itertools
 if args.layout == 'layout1':
     i = 1
-    desired_weights = [30, 20, 10]
+    desired_weights = [50, 20, 10]
     groups = []
     while len(groups) != 3:
         groups = buildGroupsSequentially(pebs_df, args.layouts_dir, desired_weights)
