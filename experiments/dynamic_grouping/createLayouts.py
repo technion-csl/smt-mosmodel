@@ -130,7 +130,7 @@ def buildGroups(pebs_df, layouts_dir):
     current_group = []
     current_total_weight = 0
     i = 0
-    desired_weights = [30, 20, 10]
+    desired_weights = [50, 20, 10]
     for index, row in pebs_df.iterrows():
         page_number = int(row['PAGE_NUMBER'])
         weight = row['NUM_ACCESSES']
