@@ -73,6 +73,7 @@ class StaticLog(metaclass=Singleton):
             layout = row['layout']
             walk_cycles = results_df.loc[results_df['layout'] == layout, 'walk_cycles'].iloc[0]
             real_coverage = (max_walk_cycles - walk_cycles) / delta_walk_cycles
+            real_coverage *= 100
             self._df.loc[self._df['layout'] == layout, 'real_coverage'] = real_coverage
         self.writeLog()
         return self._df
@@ -133,7 +134,7 @@ class GroupsLog(metaclass=Singleton):
         query = self._df.query('real_coverage == (-1)')
         for index, row in query.iterrows():
             layout = row['layout']
-            walk_cycles = results_df.loc[results_df['layout'] == layout, 'walk_cycles']
+            walk_cycles = results_df.loc[results_df['layout'] == layout, 'walk_cycles'].iloc[0]
             real_coverage = (max_walk_cycles - walk_cycles) / delta_walk_cycles
             real_coverage *= 100
             self._df.loc[self._df['layout'] == layout, 'real_coverage'] = real_coverage
@@ -407,6 +408,18 @@ def createNextLayoutStatically(pebs_df, mean_file, layout, exp_dir):
     results_df = loadDataframe(mean_file)
     # 2.2.2. update the real-coverage in the log
     log = StaticLog(args.exp_dir)
+    #------------------------------------------------------------------------
+    # TODO: remove the following copy process (from groups log to static log)
+    # and replace it by running groups for the two methods and only then
+    # run the specific algorithm of static or dynamic layouts allocation
+    if log._df.empty and not results_df.empty:
+        groups_log = GroupsLog(exp_dir)
+        if groups_log._df.empty:
+            createGroups(pebs_df, exp_dir, write_layouts=False)
+        for index, row in groups_log._df.iterrows():
+            log.addRecord(row['layout'], 'TBD', 'TBD', row['expected_coverage'])
+        log.writeLog()
+    #------------------------------------------------------------------------
     log.writeRealCoverage(results_df)
     # 2.2.3 calculate gaps between measurements
     results_df = results_df.sort_values('walk_cycles', ascending=False)
@@ -435,20 +448,25 @@ def createNextDynamicLayoutStatically(pebs_df, mean_file, layout, exp_dir):
     # 2.2. create additional 15 layouts dynamically (in runtime):
     # 2.2.1 collect their results
     results_df = loadDataframe(mean_file)
+
     # 2.2.2. update the real-coverage in the log
     log = StaticLog(args.exp_dir)
     log.writeRealCoverage(results_df)
+
     # 2.2.3 calculate gaps between measurements
     #results_df = results_df.sort_values('walk_cycles', ascending=False)
     df = log._df.sort_values('real_coverage', ascending=True)
+
     # 2.2.4 find the maximum gap
     #idx = results_df['walk_cycles'].diff().abs().argmax()
     idx = df['real_coverage'].diff().abs().argmax()
+
     # 2.2.4.1 find the two layouts of the gap’s two measurements (right and left)
     #right_layout = results_df.iloc[idx-1]
     #left_layout = results_df.iloc[idx]
     right_layout = df.iloc[idx-1]
     left_layout = df.iloc[idx]
+
     # 2.2.4.2 scale the expected coverage according to the ratio between real coverages
     left_real_coverage = log.getRealCoverage(left_layout['layout'])
     right_real_coverage = log.getRealCoverage(right_layout['layout'])
@@ -458,9 +476,9 @@ def createNextDynamicLayoutStatically(pebs_df, mean_file, layout, exp_dir):
     exp_coverage_delta = left_exp_coverage - right_exp_coverage
     scale = exp_coverage_delta / real_coverage_delta
     new_delta = scale * 2.5
-    new_delta = abs(left_exp_coverage + right_exp_coverage)/2
+
     # 2.2.4.3 add new_delta coverage to the right layout
-    tlb_coverage_percentage = right_exp_coverage + new_delta
+    tlb_coverage_percentage = abs(left_exp_coverage + right_exp_coverage)/2
     windows = findTlbCoverageWindows(pebs_df, tlb_coverage_percentage, 0.5)
     print('TLB-coverage = {coverage} - Paegs = {pages}'.format(coverage=tlb_coverage_percentage, pages=windows))
     writeLayout(layout, windows, exp_dir)
@@ -482,13 +500,13 @@ def createNextLayoutDynamically(pebs_df, mean_file, layout, exp_dir):
     for i in range(len(groups_log._df)-1):
         right_layout = groups_log._df.iloc[i]
         left_layout = groups_log._df.iloc[i+1]
-        if right_layout['remaining_budget'] == 0:
+        if left_layout['remaining_budget'] == 0:
             continue
-        if right_layout['remaining_budget'] == right_layout['total_budget']:
+        if left_layout['remaining_budget'] == left_layout['total_budget']:
             static_log.clear()
             static_log.addRecord(right_layout['layout'], 'TBD', 'TBD', right_layout['expected_coverage'])
             static_log.addRecord(left_layout['layout'], 'TBD', 'TBD', left_layout['expected_coverage'])
-        groups_log.decreaseRemainingBudget(right_layout['layout'])
+        groups_log.decreaseRemainingBudget(left_layout['layout'])
         static_log.writeLog()
         static_log.writeRealCoverage(results_df)
         createNextDynamicLayoutStatically(pebs_df, mean_file, layout, exp_dir)
@@ -552,6 +570,7 @@ pebs_df = normalizePebsAccesses(args.pebs_mem_bins)
 headPagesWeight = pebs_df.iloc[0:50]['NUM_ACCESSES'].sum()
 # 1. If first-50-pages weight > 50% then
 if headPagesWeight > 50:
+    print('[DEBUG]: sub-groups method')
     if args.layout == 'layout1':
         # 1.1. create nine layouts statically (using PEBS output):
         createGroups(pebs_df, args.exp_dir)
@@ -561,6 +580,7 @@ if headPagesWeight > 50:
                                   args.layout, args.exp_dir)
 # 2. else (first-50-pages weight < 50%) then
 else:
+    print('[DEBUG]: static method')
     if args.layout == 'layout1':
         # 2.1. create 40 layouts statically
         createStatisLayouts(pebs_df, args.exp_dir, 2.5)
