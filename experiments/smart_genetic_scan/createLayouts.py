@@ -182,7 +182,7 @@ for root, dirs, files in os.walk(args.results_root_dir):
 df = df.sort_values('walk_cycles').reset_index()
 
 # find the maximum gap of walk-cycles between measurements
-max_gap_idx = df['walk_cycles'].diff().abs().idxmax()
+max_gap_idx = df['walk_cycles'].diff().abs().argmax()
 
 father = df.iloc[max_gap_idx]
 mother = df.iloc[max_gap_idx-1]
