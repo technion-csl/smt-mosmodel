@@ -27,23 +27,30 @@ def loadDataframe(mean_file):
     df = df.drop_duplicates(subset=important_columns)
     return df
 
-class StaticLog:
+class Singleton(type):
+    _instances = {}
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+class StaticLog(metaclass=Singleton):
     def __init__(self, exp_dir):
         self._exp_dir = exp_dir
         self._log_file = self._exp_dir + '/static_layouts.log'
         self._df = self.readLog()
-        
+
     def readLog(self):
         if not os.path.isfile(self._log_file):
             self._df = pd.DataFrame(columns=[
-                'layout', 'right_layout', 'left_layout', 
+                'layout', 'right_layout', 'left_layout',
                 'expected_coverage', 'real_coverage'])
         else:
             self._df = pd.read_csv(self._log_file)
         self._df['real_coverage'] = self._df['real_coverage'].astype(float)
         return self._df
-    
-    def addRecord(self, 
+
+    def addRecord(self,
                   layout, right_layout, left_layout, expected_coverage,
                   writeLog=False):
         self._df = self._df.append({
@@ -55,26 +62,27 @@ class StaticLog:
             }, ignore_index=True)
         if writeLog:
             self.writeLog()
-    
+
     def writeRealCoverage(self, results_df):
         max_walk_cycles = results_df['walk_cycles'].max()
         min_walk_cycles = results_df['walk_cycles'].min()
         delta_walk_cycles = max_walk_cycles - min_walk_cycles
+        self._df['real_coverage'] = self._df['real_coverage'].astype(float)
         query = self._df.query('real_coverage == (-1)')
         for index, row in query.iterrows():
             layout = row['layout']
-            walk_cycles = results_df.loc[results_df['layout'] == layout, 'walk_cycles']
+            walk_cycles = results_df.loc[results_df['layout'] == layout, 'walk_cycles'].iloc[0]
             real_coverage = (max_walk_cycles - walk_cycles) / delta_walk_cycles
             self._df.loc[self._df['layout'] == layout, 'real_coverage'] = real_coverage
         self.writeLog()
         return self._df
-    
+
     def writeLog(self):
         self._df.to_csv(self._log_file, index=False)
-        
-    def __clearLog(self):
+
+    def clear(self):
         self._df = pd.DataFrame(columns=self._df.columns)
-    
+
     def _getField(self, layout, field):
         field_val = self._df.loc[self._df['layout'] == layout, field]
         field_val = field_val.to_list()
@@ -82,31 +90,30 @@ class StaticLog:
             return None
         else:
             return field_val[0]
-        
+
     def getRealCoverage(self, layout):
         return self._getField(layout, 'real_coverage')
-    
+
     def getExpectedCoverage(self, layout):
         return self._getField(layout, 'expected_coverage')
 
 import os.path
-class GroupsLog:
+class GroupsLog(metaclass=Singleton):
     def __init__(self, exp_dir):
         self._exp_dir = exp_dir
         self._log_file = self._exp_dir + '/groups.log'
         self._df = self.readLog()
-        
+
     def readLog(self):
         if not os.path.isfile(self._log_file):
             self._df = pd.DataFrame(columns=[
-                'layout', 'total_budget', 'remaining_budget', 
+                'layout', 'total_budget', 'remaining_budget',
                 'expected_coverage', 'real_coverage'])
         else:
             self._df = pd.read_csv(self._log_file)
-        self._df['real_coverage'] = self._df['real_coverage'].astype(float)
         return self._df
-    
-    def addRecord(self, 
+
+    def addRecord(self,
                   layout, expected_coverage, writeLog=False):
         self._df = self._df.append({
             'layout': layout,
@@ -114,14 +121,15 @@ class GroupsLog:
             'remaining_budget': -1,
             'expected_coverage': expected_coverage,
             'real_coverage': -1
-            })
+            }, ignore_index=True)
         if writeLog:
             self.writeLog()
-    
+
     def writeRealCoverage(self, results_df):
         max_walk_cycles = results_df['walk_cycles'].max()
         min_walk_cycles = results_df['walk_cycles'].min()
         delta_walk_cycles = max_walk_cycles - min_walk_cycles
+        self._df['real_coverage'] = self._df['real_coverage'].astype(float)
         query = self._df.query('real_coverage == (-1)')
         for index, row in query.iterrows():
             layout = row['layout']
@@ -131,7 +139,7 @@ class GroupsLog:
             self._df.loc[self._df['layout'] == layout, 'real_coverage'] = real_coverage
         self.writeLog()
         return self._df
-    
+
     def calculateBudget(self):
         query = self._df.query('real_coverage == (-1)')
         if len(query) > 0:
@@ -151,13 +159,16 @@ class GroupsLog:
                 budget = 0
             else:
                 budget = int((delta / total_deltas) * total_budgets)
-            row['total_budget'] = budget
-            row['remaining_budget'] = budget
+            self._df.at[index, 'total_budget'] = budget
+            self._df.at[index, 'remaining_budget'] = budget
         self.writeLog()
-    
+
+    def decreaseRemainingBudget(self, layout):
+        self._df.loc[self._df['layout'] == layout, 'remaining_budget'] = self._df.loc[self._df['layout'] == layout, 'remaining_budget']-1
+
     def writeLog(self):
         self._df.to_csv(self._log_file, index=False)
-    
+
     def _getField(self, layout, field):
         field_val = self._df.loc[self._df['layout'] == layout, field]
         field_val = field_val.to_list()
@@ -165,10 +176,10 @@ class GroupsLog:
             return None
         else:
             return field_val[0]
-        
+
     def getRealCoverage(self, layout):
         return self._getField(layout, 'real_coverage')
-    
+
     def getExpectedCoverage(self, layout):
         return self._getField(layout, 'expected_coverage')
 
@@ -207,7 +218,7 @@ def calculateTlbCoverage(pebs_df, pages):
             'PAGE_NUMBER in {pages}'.format(pages=pages))\
                     ['NUM_ACCESSES'].sum()
     return total_weight
-     
+
 def buildGroupsSequentially(orig_pebs_df, exp_dir, desired_weights):
     pebs_df = orig_pebs_df[['PAGE_NUMBER', 'NUM_ACCESSES']]
     pebs_df = pebs_df.sort_values('NUM_ACCESSES', ascending=False)
@@ -347,7 +358,7 @@ def findTlbCoverageWindows(df, tlb_coverage_percentage, epsilon):
 
 def createStatisLayouts(pebs_df, exp_dir, step_size):
     """ Creates 40 layouts statically:
-            
+
     2.1.	Create 40 layouts statically:
         2.1.1.	such that each layout covers 2.5% of TLB-misses more than previous layout (according to PEBS)
         2.1.2.	for each layout log the following record:
@@ -367,7 +378,7 @@ def createStatisLayouts(pebs_df, exp_dir, step_size):
         layout_name = 'layout'+str(num_layout)
         writeLayout(layout_name, windows, exp_dir)
         # 2.1.2. for each layout log the following record:
-        log.addRecord(layout_name, -1, -1, 
+        log.addRecord(layout_name, 'TBD', 'TBD',
                        tlb_coverage_percentage)
         num_layout += 1
         tlb_coverage_percentage += step_size
@@ -376,7 +387,7 @@ def createStatisLayouts(pebs_df, exp_dir, step_size):
 def createNextLayoutStatically(pebs_df, mean_file, layout, exp_dir):
     """ Creates layout based on the previous statically-created layouts
         (when the first-50-pages weight < 50%)
-    2.1.	createStatisLayouts()      
+    2.1.	createStatisLayouts()
     2.2.	Create additional 15 layouts dynamically (in runtime):
         2.2.1.	collect their results
         2.2.2.	update the real-coverage in the log
@@ -398,18 +409,18 @@ def createNextLayoutStatically(pebs_df, mean_file, layout, exp_dir):
     log = StaticLog(args.exp_dir)
     log.writeRealCoverage(results_df)
     # 2.2.3 calculate gaps between measurements
-    results_df = results_df.sort_values('walk_cyckles', ascending=False)
+    results_df = results_df.sort_values('walk_cycles', ascending=False)
     # 2.2.4 find the maximum gap
     idx = results_df['walk_cycles'].diff().abs().argmax()
     # 2.2.4.1 find the two layouts of the gap’s two measurements (right and left)
     right_layout = results_df.iloc[idx-1]
     left_layout = results_df.iloc[idx]
     # 2.2.4.2 scale the expected coverage according to the ratio between real coverages
-    left_real_coverage = log.getRealCoverage(left_layout)
-    right_real_coverage = log.getRealCoverage(right_layout)
+    left_real_coverage = log.getRealCoverage(left_layout['layout'])
+    right_real_coverage = log.getRealCoverage(right_layout['layout'])
     real_coverage_delta = left_real_coverage - right_real_coverage
-    left_exp_coverage = log.getExpectedCoverage(left_layout)
-    right_exp_coverage = log.getExpectedCoverage(right_layout)
+    left_exp_coverage = log.getExpectedCoverage(left_layout['layout'])
+    right_exp_coverage = log.getExpectedCoverage(right_layout['layout'])
     exp_coverage_delta = left_exp_coverage - right_exp_coverage
     scale = exp_coverage_delta / real_coverage_delta
     new_delta = scale * 2.5
@@ -418,35 +429,71 @@ def createNextLayoutStatically(pebs_df, mean_file, layout, exp_dir):
     windows = findTlbCoverageWindows(pebs_df, tlb_coverage_percentage, 0.5)
     print('TLB-coverage = {coverage} - Paegs = {pages}'.format(coverage=tlb_coverage_percentage, pages=windows))
     writeLayout(layout, windows, exp_dir)
-    log.addRecord(layout, right_layout, left_layout, tlb_coverage_percentage, True)
-    
+    log.addRecord(layout, right_layout['layout'], left_layout['layout'], tlb_coverage_percentage, True)
+
+def createNextDynamicLayoutStatically(pebs_df, mean_file, layout, exp_dir):
+    # 2.2. create additional 15 layouts dynamically (in runtime):
+    # 2.2.1 collect their results
+    results_df = loadDataframe(mean_file)
+    # 2.2.2. update the real-coverage in the log
+    log = StaticLog(args.exp_dir)
+    log.writeRealCoverage(results_df)
+    # 2.2.3 calculate gaps between measurements
+    #results_df = results_df.sort_values('walk_cycles', ascending=False)
+    df = log._df.sort_values('real_coverage', ascending=True)
+    # 2.2.4 find the maximum gap
+    #idx = results_df['walk_cycles'].diff().abs().argmax()
+    idx = df['real_coverage'].diff().abs().argmax()
+    # 2.2.4.1 find the two layouts of the gap’s two measurements (right and left)
+    #right_layout = results_df.iloc[idx-1]
+    #left_layout = results_df.iloc[idx]
+    right_layout = df.iloc[idx-1]
+    left_layout = df.iloc[idx]
+    # 2.2.4.2 scale the expected coverage according to the ratio between real coverages
+    left_real_coverage = log.getRealCoverage(left_layout['layout'])
+    right_real_coverage = log.getRealCoverage(right_layout['layout'])
+    real_coverage_delta = left_real_coverage - right_real_coverage
+    left_exp_coverage = log.getExpectedCoverage(left_layout['layout'])
+    right_exp_coverage = log.getExpectedCoverage(right_layout['layout'])
+    exp_coverage_delta = left_exp_coverage - right_exp_coverage
+    scale = exp_coverage_delta / real_coverage_delta
+    new_delta = scale * 2.5
+    new_delta = abs(left_exp_coverage + right_exp_coverage)/2
+    # 2.2.4.3 add new_delta coverage to the right layout
+    tlb_coverage_percentage = right_exp_coverage + new_delta
+    windows = findTlbCoverageWindows(pebs_df, tlb_coverage_percentage, 0.5)
+    print('TLB-coverage = {coverage} - Paegs = {pages}'.format(coverage=tlb_coverage_percentage, pages=windows))
+    writeLayout(layout, windows, exp_dir)
+    log.addRecord(layout, right_layout['layout'], left_layout['layout'], tlb_coverage_percentage, True)
+
 def createNextLayoutDynamically(pebs_df, mean_file, layout, exp_dir):
     # collect previous layouts results
     results_df = loadDataframe(mean_file)
-    
+
     # calculate the real-coverage for each group and update the log
-    log = GroupsLog(exp_dir)
-    if log._df.empty:
-        createGroups(pebs_df, args.exp_dir, write_layouts=False)
-    log.writeRealCoverage(results_df)
-    log.calculateBudget()
+    groups_log = GroupsLog(exp_dir)
+    if groups_log._df.empty:
+        createGroups(pebs_df, exp_dir, write_layouts=False)
+    groups_log.writeRealCoverage(results_df)
+    groups_log.calculateBudget()
 
     # add layouts for each group staically
-    log = StaticLog(exp_dir)
-    log.clear()
-    for i in range(len(log._df)-1):
-        right_layout = log._df.iloc[i]
-        left_layout = log._df.iloc[i+1]
+    static_log = StaticLog(exp_dir)
+    for i in range(len(groups_log._df)-1):
+        right_layout = groups_log._df.iloc[i]
+        left_layout = groups_log._df.iloc[i+1]
         if right_layout['remaining_budget'] == 0:
             continue
         if right_layout['remaining_budget'] == right_layout['total_budget']:
-            log.__clear()
-            log.addRecord(right_layout['layout'], right_layout['expected_coverage'])
-            log.addRecord(left_layout['layout'], left_layout['expected_coverage'])            
-        right_layout['remaining_budget'] = right_layout['remaining_budget']-1
-        log.writeLog()
-        createNextLayoutStatically(pebs_df, mean_file, layout, exp_dir)
-    
+            static_log.clear()
+            static_log.addRecord(right_layout['layout'], 'TBD', 'TBD', right_layout['expected_coverage'])
+            static_log.addRecord(left_layout['layout'], 'TBD', 'TBD', left_layout['expected_coverage'])
+        groups_log.decreaseRemainingBudget(right_layout['layout'])
+        static_log.writeLog()
+        static_log.writeRealCoverage(results_df)
+        createNextDynamicLayoutStatically(pebs_df, mean_file, layout, exp_dir)
+        break
+
 def buildGroupsSparsely(pebs_df, exp_dir, desired_weights):
     pebs_df.sort_values('NUM_ACCESSES', ascending=False, inplace=True)
     groups = []
@@ -471,14 +518,14 @@ def buildGroupsSparsely(pebs_df, exp_dir, desired_weights):
 def normalizePebsAccesses(pebs_mem_bins):
     # read mem-bins
     pebs_df = pd.read_csv(pebs_mem_bins, delimiter=',')
-    
+
     # filter and eep only brk pool accesses
     pebs_df = pebs_df[pebs_df['PAGE_TYPE'].str.contains('brk')]
     if pebs_df.empty:
         sys.exit('Input file does not contain page accesses information about the brk pool!')
     pebs_df = pebs_df[['PAGE_NUMBER', 'NUM_ACCESSES']]
     pebs_df = pebs_df.reset_index()
-    
+
     # transform NUM_ACCESSES from absolute number to percentage
     total_access = pebs_df['NUM_ACCESSES'].sum()
     pebs_df['NUM_ACCESSES'] = pebs_df['NUM_ACCESSES'].mul(100).divide(total_access)
@@ -510,7 +557,7 @@ if headPagesWeight > 50:
         createGroups(pebs_df, args.exp_dir)
     else:
         # 1.2. create other layouts dynamically
-        createNextLayoutDynamically(pebs_df, args.mean_file, 
+        createNextLayoutDynamically(pebs_df, args.mean_file,
                                   args.layout, args.exp_dir)
 # 2. else (first-50-pages weight < 50%) then
 else:
@@ -519,8 +566,8 @@ else:
         createStatisLayouts(pebs_df, args.exp_dir, 2.5)
     else:
         # 2.2. create additional 15 layouts dynamically (in runtime)
-        createNextLayoutStatically(pebs_df, args.mean_file, 
+        createNextLayoutStatically(pebs_df, args.mean_file,
                                args.layout, args.exp_dir)
 
-    
+
 
