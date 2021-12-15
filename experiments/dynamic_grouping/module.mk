@@ -1,7 +1,7 @@
 MODULE_NAME := experiments/dynamic_grouping
 
 DYNAMIC_GROUPING_EXPERIMENT := $(MODULE_NAME)
-DYNAMIC_GROUPING_RESULTS := $(subst experiment,results,$(DYNAMIC_GROUPING_EXPERIMENT))
+DYNAMIC_GROUPING_RESULTS := $(subst experiments,results,$(DYNAMIC_GROUPING_EXPERIMENT))
 DYNAMIC_GROUPING_NUM_OF_REPEATS := $(NUMBER_OF_SOCKETS)
 NUM_LAYOUTS := 55
 NUM_OF_REPEATS := $(DYNAMIC_GROUPING_NUM_OF_REPEATS)
@@ -18,7 +18,7 @@ $(LAYOUT_FILES): $(DYNAMIC_GROUPING_EXPERIMENT)/layouts/%.csv: $(MEMORY_FOOTPRIN
 		--memory_footprint=$(MEMORY_FOOTPRINT_FILE) \
 		--pebs_mem_bins=$(MEM_BINS_2MB_CSV_FILE) \
 		--layout=$* \
-		--exp_dir=$(dir $@)/.. \ 
+		--exp_dir=$(dir $@)/.. \
 		--mean_file=$(DYNAMIC_GROUPING_RESULTS)/mean.csv
 
 override undefine NUM_LAYOUTS

@@ -40,6 +40,7 @@ class StaticLog:
                 'expected_coverage', 'real_coverage'])
         else:
             self._df = pd.read_csv(self._log_file)
+        self._df['real_coverage'] = self._df['real_coverage'].astype(float)
         return self._df
     
     def addRecord(self, 
@@ -59,7 +60,7 @@ class StaticLog:
         max_walk_cycles = results_df['walk_cycles'].max()
         min_walk_cycles = results_df['walk_cycles'].min()
         delta_walk_cycles = max_walk_cycles - min_walk_cycles
-        query = self._df.query('real_coverage == -1')
+        query = self._df.query('real_coverage == (-1)')
         for index, row in query.iterrows():
             layout = row['layout']
             walk_cycles = results_df.loc[results_df['layout'] == layout, 'walk_cycles']
@@ -102,11 +103,12 @@ class GroupsLog:
                 'expected_coverage', 'real_coverage'])
         else:
             self._df = pd.read_csv(self._log_file)
+        self._df['real_coverage'] = self._df['real_coverage'].astype(float)
         return self._df
     
     def addRecord(self, 
                   layout, expected_coverage, writeLog=False):
-        self._df.append({
+        self._df = self._df.append({
             'layout': layout,
             'total_budget': -1,
             'remaining_budget': -1,
@@ -120,17 +122,18 @@ class GroupsLog:
         max_walk_cycles = results_df['walk_cycles'].max()
         min_walk_cycles = results_df['walk_cycles'].min()
         delta_walk_cycles = max_walk_cycles - min_walk_cycles
-        query = self._df.query('real_coverage == -1')
+        query = self._df.query('real_coverage == (-1)')
         for index, row in query.iterrows():
             layout = row['layout']
             walk_cycles = results_df.loc[results_df['layout'] == layout, 'walk_cycles']
             real_coverage = (max_walk_cycles - walk_cycles) / delta_walk_cycles
+            real_coverage *= 100
             self._df.loc[self._df['layout'] == layout, 'real_coverage'] = real_coverage
         self.writeLog()
         return self._df
     
     def calculateBudget(self):
-        query = self._df.query('real_coverage == -1')
+        query = self._df.query('real_coverage == (-1)')
         if len(query) > 0:
             raise Exception('GroupsLog.calculateBudget was called before updating the groups real_coverage.')
         # sort the group layouts by walk-cycles/real_coverage
@@ -138,6 +141,7 @@ class GroupsLog:
         # calculate the diff between each two adjacent layouts
         # (call it delta[i] for the diff between group[i] and group[i+1])
         self._df['delta'] = self._df['real_coverage'].diff().abs()
+        self._df['delta'] = self._df['delta'].fillna(0)
         total_deltas = self._df.query('delta > 2.5')['delta'].sum()
         total_budgets = 46 # 55-9: num_layouts(55) - groups_layouts(9)
         for index, row in self._df.iterrows():
@@ -285,7 +289,7 @@ def buildGroupsSequentially(orig_pebs_df, exp_dir, desired_weights):
             break
     return groups
 
-def createGroups(pebs_df, exp_dir):
+def createGroups(pebs_df, exp_dir, write_layouts=True):
     i = 1
     desired_weights = [50, 20, 10]
     groups = []
@@ -310,14 +314,16 @@ def createGroups(pebs_df, exp_dir):
             print('weight: ' + str(expected_coverage))
             print('hugepages: ' + str(windows))
             print('---------------')
-            writeLayout(layout_name, windows, exp_dir)
+            if write_layouts:
+                writeLayout(layout_name, windows, exp_dir)
             log.addRecord(layout_name, expected_coverage)
     # 1.1.3. create additional layout in which all pages are backed with 2MB
     layout_name = 'layout' + str(i)
     print(layout_name)
     print('weight: 100%')
     print('hugepages: all pages')
-    writeLayoutAll2mb(layout_name, exp_dir)
+    if write_layouts:
+        writeLayoutAll2mb(layout_name, exp_dir)
     log.addRecord(layout_name, 100)
     log.writeLog()
 
@@ -420,6 +426,8 @@ def createNextLayoutDynamically(pebs_df, mean_file, layout, exp_dir):
     
     # calculate the real-coverage for each group and update the log
     log = GroupsLog(exp_dir)
+    if log._df.empty:
+        createGroups(pebs_df, args.exp_dir, write_layouts=False)
     log.writeRealCoverage(results_df)
     log.calculateBudget()
 
