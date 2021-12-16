@@ -145,6 +145,9 @@ class GroupsLog(metaclass=Singleton):
         query = self._df.query('real_coverage == (-1)')
         if len(query) > 0:
             raise Exception('GroupsLog.calculateBudget was called before updating the groups real_coverage.')
+        query = self._df.query('total_budget < 0')
+        if len(query) == 0:
+            return
         # sort the group layouts by walk-cycles/real_coverage
         self._df = self._df.sort_values('real_coverage', ascending=True)
         # calculate the diff between each two adjacent layouts
@@ -166,6 +169,7 @@ class GroupsLog(metaclass=Singleton):
 
     def decreaseRemainingBudget(self, layout):
         self._df.loc[self._df['layout'] == layout, 'remaining_budget'] = self._df.loc[self._df['layout'] == layout, 'remaining_budget']-1
+        self.writeLog()
 
     def writeLog(self):
         self._df.to_csv(self._log_file, index=False)
