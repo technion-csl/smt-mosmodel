@@ -47,13 +47,13 @@ class Log():
         else:
             self._df = pd.read_csv(self._log_file)
         return self._df
-    
+
     def writeLog(self):
         self._df.to_csv(self._log_file, index=False)
 
     def clear(self):
         self._df = pd.DataFrame(columns=self._default_columns)
-        
+
     def empty(self):
         return self._df.empty
 
@@ -64,27 +64,27 @@ class Log():
             return None
         else:
             return field_val[0]
-        
+
     def getRealCoverage(self, layout):
         return self.getField('layout', layout, 'real_coverage')
 
     def getExpectedCoverage(self, layout):
         return self.getField('layout', layout, 'expected_coverage')
-    
+
     def getLastRecord(self):
         if self.empty():
             return None
         return self._df.iloc[len(self._df)-1]
-    
+
     def getRecord(self, key_name, key_value):
-        record = self._df.query('{key} == {value}'.format(
+        record = self._df.query('{key} == "{value}"'.format(
             key=key_name,
             value=key_value))
         if record.empty:
             return None
         else:
             return record.iloc[0]
-   
+
     def writeRealCoverage(self, results_df):
         max_walk_cycles = results_df['walk_cycles'].max()
         min_walk_cycles = results_df['walk_cycles'].min()
@@ -99,7 +99,7 @@ class Log():
             self._df.loc[self._df['layout'] == layout, 'real_coverage'] = real_coverage
             self._df.loc[self._df['layout'] == layout, 'walk_cycles'] = walk_cycles
         self.writeLog()
-        
+
 class StaticLog(Log, metaclass=Singleton):
     def __init__(self, exp_dir):
         default_columns = [
@@ -165,12 +165,12 @@ class GroupsLog(Log, metaclass=Singleton):
                 budget = round((delta / total_deltas) * total_budgets)
             self._df.at[index, 'total_budget'] = budget
             self._df.at[index, 'remaining_budget'] = budget
-        # fix total budgets rue to rounding 
+        # fix total budgets rue to rounding
         rounded_total_budgets = self._df['total_budget'].sum()
         delta_budget = total_budgets - rounded_total_budgets
         self._df.at[index, 'total_budget'] = budget + delta_budget
         self._df.at[index, 'remaining_budget'] = budget + delta_budget
-        
+
         self.writeLog()
 
     def decreaseRemainingBudget(self, layout):
@@ -179,11 +179,11 @@ class GroupsLog(Log, metaclass=Singleton):
 
     def writeLog(self):
         self._df.to_csv(self._log_file, index=False)
-   
+
 class StateLog(Log):
     def __init__(self, exp_dir, right_layout, left_layout):
         default_columns = [
-            'layout', 'right_layout', 'left_layout',
+            'layout',
             'scan_method', 'scan_direction', 'scan_value', 'scan_base',
             'expected_coverage', 'real_coverage', 'walk_cycles']
         self._right_layout = right_layout
@@ -198,9 +198,9 @@ class StateLog(Log):
                   writeLog=True):
         self._df = self._df.append({
             'layout': layout,
-            'scan_method': scan_method, 
-            'scan_direction': scan_direction, 
-            'scan_value': scan_value, 
+            'scan_method': scan_method,
+            'scan_direction': scan_direction,
+            'scan_value': scan_value,
             'scan_base': scan_base,
             'expected_coverage': expected_coverage,
             'real_coverage': -1,
@@ -208,21 +208,21 @@ class StateLog(Log):
             }, ignore_index=True)
         if writeLog:
             self.writeLog()
-        
+
     def getRightLayoutName(self):
         return self._right_layout
-    
+
     def getLeftLayoutName(self):
         return self._left_layout
-    
+
     def getRigthRecord(self):
         assert(not self.empty())
         return self.getRecord('layout', self.getRightLayoutName())
-    
+
     def getLeftRecord(self):
         assert(not self.empty())
         return self.getRecord('layout', self.getLeftLayoutName())
-    
+
     def isLastRecordInRange(self, results_df):
         self.writeLog(results_df)
         last_layout = self.getLastRecord()
@@ -230,51 +230,51 @@ class StateLog(Log):
         assert(right_layout)
         left_layout = self.getRecord('layout', self.getLeftLayoutName())
         assert(left_layout)
-        
+
         return right_layout['walk_cycles'] >= last_layout['walk_cycles'] and \
             last_layout['walk_cycles'] >= left_layout['walk_cycles']
-            
+
     def getGapFromBase(self, layout, base_layout):
         layout_coverage = self.getRealCoverage(layout)
-        assert(layout_coverage != None)
+        assert(layout_coverage is not None)
         base_coverage = self.getRealCoverage(base_layout)
-        assert(base_coverage != None)
+        assert(base_coverage is not None)
         return base_coverage - layout_coverage
-    
+
     def getImprovementInTotal(self):
         """
-        Calculates if the last layout contributed to reducing the total 
+        Calculates if the last layout contributed to reducing the total
         'big gaps', which are greater than 2.5%.
 
         Returns
         -------
         bool
             Returns True if the last layout reduced the sum of the '
-            big gaps' or splitted one 'big gap' to two more smalled gaps. 
+            big gaps' or splitted one 'big gap' to two more smalled gaps.
             Returns False otherwise
         """
         including_df_diffs = self._df.sort_values('real_coverage', ascending=True)
         including_df_diffs['diff'] = including_df_diffs['real_coverage'].diff()
         including_df_diffs = including_df_diffs.query('diff > 2.5')
-        
+
         excluding_df = self._df.iloc[0:len(self._df)-1]
         excluding_df_diffs = excluding_df.sort_values('real_coverage', ascending=True)
         excluding_df_diffs['diff'] = excluding_df_diffs['real_coverage'].diff()
         excluding_df_diffs = excluding_df_diffs.query('diff > 2.5')
-        
+
         sum_diff = including_df_diffs['diff'].sum() - excluding_df_diffs['diff'].sum()
         count_diff = including_df_diffs['diff'].count() - excluding_df_diffs['diff'].count()
-        
+
         return count_diff > 0 or sum_diff > 0
-    
+
     def getGapBetweenLastRecordAndBase(self):
         last_layout = self.getLastRecord()
         base_layout = last_layout['scan_base']
         return self.getGapFromBase(last_layout['layout'], base_layout)
-    
+
     def getBaseLayout(self, layout_name):
         return self.getField('layout', layout_name, 'scan_base')
-        
+
     def getRootBaseLayout(self, layout):
         """
         Searches the state log, starting from the last record, to find the
@@ -289,13 +289,13 @@ class StateLog(Log):
             current_layout = base_layout
             base_layout = self.getBaseLayout(current_layout)
         return current_layout
-    
+
     def getNewBaseLayout(self):
         """
         Returns a new layout to be used as a base for scanning the space
         and closing the gap between the right and left layouts of current
         state.
-        The new base_layout is found by looking for a layout with the 
+        The new base_layout is found by looking for a layout with the
         maximal gap that is greater than 2.5%
         """
         diffs = self._df.sort_values('real_coverage', ascending=True)
@@ -438,7 +438,7 @@ def buildGroupsSequentially(orig_pebs_df, exp_dir, desired_weights, all_pages):
             continue
 
         weight = row['NUM_ACCESSES']
-        
+
         epsilon = desired_weights[i] * 0.1
         if weight > (desired_weights[i] + epsilon):
             continue
@@ -604,7 +604,7 @@ def __layoutsOrderedOrdinally(results_df, layouts_list):
         layouts_list=layouts_list))
     sorted_walks = interesting_results.sort_values('walk_cycles', ascending=False)
     return sorted_layouts == sorted_walks
-    
+
 def createNextStaticLayout(pebs_df, mean_file, layout, exp_dir):
     """ Creates layout based on the previous statically-created layouts
         (when the first-10-pages weight < 30%)
@@ -624,26 +624,26 @@ def createNextStaticLayout(pebs_df, mean_file, layout, exp_dir):
     """
 
     # 2.2. create additional 15 layouts dynamically (in runtime):
-        
+
     # 2.2.1 collect their results
     results_df = loadDataframe(mean_file)
     if results_df.empty:
         sys.exit('results csv file [{mean_file}] is empty but it should \
                  contain the results of the first 40 points!'.format(mean_file=mean_file))
-                 
+
     # 2.2.2. update the real-coverage in the log
-    log = StaticLog(args.exp_dir)    
+    log = StaticLog(args.exp_dir)
     if results_df.empty:
         sys.exit('The static.log is empty!')
     log.writeRealCoverage(results_df)
-    
+
     # check if the first 40 layouts were not produced ordinally as we expect
     # then run the dynamic algorithm to create the rest layouts
     layouts_list = log._df['layout'].to_list()
     if not __layoutsOrderedOrdinally(results_df, layouts_list):
         createNextLayoutDynamically(pebs_df, mean_file, layout, exp_dir)
         return
-    
+
     # 2.2.3 calculate gaps between measurements
     results_df = results_df.sort_values('walk_cycles', ascending=False)
     # 2.2.4 find the maximum gap
@@ -678,19 +678,19 @@ def getNextSlidingDirection(state, last_layout, last_direction, last_value):
             assert False,'unexpected root base-layout: '+root_base_layout
     else:
         assert False,'unkown scan-direction: '+last_direction
-    
+
 def predictSlidingDirection(pebs_df, state, base_layout, exp_dir):
     pages, start_deviation = getLayoutHugepages(base_layout, exp_dir)
     incremented_pages = [p+1 for p in pages if p < last_page]
-    decremented_pages = [p-1 for p in pages if p > 0]    
+    decremented_pages = [p-1 for p in pages if p > 0]
     incremented_tlb_coverage = calculateTlbCoverage(pebs_df, incremented_pages)
     decremented_tlb_coverage = calculateTlbCoverage(pebs_df, decremented_pages)
-    
+
     coverage = calculateTlbCoverage(pebs_df, pages)
     #coverage = state.getExpectedCoverage(base_layout)
     #if coverage == None or coverage == -1:
     #    coverage = state.getRealCoverage(base_layout)
-        
+
     if incremented_tlb_coverage > coverage:
         direction = 'increment'
         value = min((2.5 / (incremented_tlb_coverage - coverage)) * 511, 511)
@@ -699,9 +699,9 @@ def predictSlidingDirection(pebs_df, state, base_layout, exp_dir):
         value = min((2.5 / (decremented_tlb_coverage - coverage)) * 511, 511)
     else:
         assert False,'sliding to both sides does not increase the coverage'
-    
+
     return direction, value
-    
+
 def getSlidingScanningParameters(pebs_df, state, results_df, exp_dir):
     last_record = state.getLastRecord()
     last_method = last_record['scan_method']
@@ -709,17 +709,17 @@ def getSlidingScanningParameters(pebs_df, state, results_df, exp_dir):
     last_value = last_record['scan_value']
     last_base = last_record['scan_base']
     last_layout = last_record['layout']
-    
+
     method = 'sliding'
     direction = last_direction
     value = last_value
     base = last_base
-    
+
     if last_method == 'tail':
         direction, value = predictSlidingDirection(pebs_df, state, base, exp_dir)
     elif last_method == 'sliding':
         pages, deviation_offset = getLayoutHugepages(last_layout, exp_dir)
-        if state.isLastRecordInRange(results_df):            
+        if state.isLastRecordInRange(results_df):
             gap = state.getGapBetweenLastRecordAndBase()
             if gap <= 0:
                 direction, value, base = getNextSlidingDirection(state, last_direction, last_value)
@@ -734,7 +734,7 @@ def getSlidingScanningParameters(pebs_df, state, results_df, exp_dir):
             direction, value, base = getNextSlidingDirection(state, last_direction, last_value)
     else:
         assert False,'unkown scan-method: '+last_method
-    return method, direction, value, base 
+    return method, direction, value, base
 
 def getTailScanningParameters(pebs_df, state, results_df, exp_dir):
     last_record = state.getLastRecord()
@@ -742,7 +742,7 @@ def getTailScanningParameters(pebs_df, state, results_df, exp_dir):
     direction = 'increment'
     value = 2.5
     base = last_record['layout']
-    
+
     if state.isLastRecordInRange(results_df):
         #last_increment = last_record['value']
         gap = state.getGapBetweenLastRecordAndBase()
@@ -760,30 +760,32 @@ def getTailScanningParameters(pebs_df, state, results_df, exp_dir):
     # then use sliding
     else:
         return getSlidingScanningParameters(pebs_df, state, results_df, exp_dir)
-    
+
 def findNextScanMethod(pebs_df, state, results_df, exp_dir):
     last_record = state.getLastRecord()
-    # first try to use the static method by incrementing the base-layout 
+    # first try to use the static method by incrementing the base-layout
     # coverage by 1.25%
-    if not last_record  or last_record['scan_method'] == 'none':
+    if last_record['scan_method'] == 'none':
         return 'tail', 'increment', 2.5, state.getRightLayoutName()
-    
+
     last_scan_method = last_record['scan_method']
     if last_scan_method == 'tail':
-        return getTailScanningParameters(pebs_df, state, results_df, exp_dir)         
+        return getTailScanningParameters(pebs_df, state, results_df, exp_dir)
     elif last_scan_method == 'sliding':
         return getSlidingScanningParameters(pebs_df, state, results_df, exp_dir)
     elif last_scan_method == 'random':
         return getRandomLayout()
     else:
         sys.exit('unexpected scanning method at this stage: ' + last_scan_method)
-          
-def applyScanMethod(pebs_df, state, layout, base_layout_name, 
+
+def applyScanMethod(pebs_df, state, layout, base_layout_name,
                     method, direction, value):
     # find the base-layout in the state log
+    print(state._df)
+    print(base_layout_name)
     base_layout = state.getRecord('layout', base_layout_name)
-    assert base_layout,'applyScanMethod: base-layout could not be found in the state log'
-    
+    assert base_layout is not None,'applyScanMethod: base-layout could not be found in the state log'
+
     # static method: create a new layout by incrementing/decrementing
     # the base-layout tlb-coverage with a fixed value
     if method == 'tail':
@@ -797,18 +799,25 @@ def applyScanMethod(pebs_df, state, layout, base_layout_name,
         else:
             sys.exit('Error: applyScanMethod was called with unexpected scanning direction for static method: ' + direction)
         windows = findTlbCoverageWindows(pebs_df, tlb_coverage, 0.5)
-        print('TLB-coverage = {coverage} - Paegs = {pages}'.format(coverage=tlb_coverage, pages=windows))        
-        state.addRecord(layout, 
-                        method, direction, value, 
+        print('TLB-coverage = {coverage} - Paegs = {pages}'.format(coverage=tlb_coverage, pages=windows))
+        state.addRecord(layout,
+                        method, direction, value,
                         base_layout['layout'], tlb_coverage)
-    
+        return windows, 0
+
     elif method == 'sliding':
         if direction == 'increment':
-            tlb_coverage += value
+            sliding = value
         elif direction == 'decrement':
-            tlb_coverage -= value
+            sliding = -value
         else:
             sys.exit('Error: applyScanMethod was called with unexpected scanning direction for static method: ' + direction)
+        windows = getLayoutHugepages(base_layout['layout'], exp_dir)
+        print('sliding offset = {sliding} - Paegs = {pages}'.format(sliding=sliding, pages=windows))
+        state.addRecord(layout,
+                        method, direction, value,
+                        base_layout['layout'], -1)
+        return windows, sliding
     else:
         sys.exit('Error: applyScanMethod was called with unexpected scanning method: ' + method)
 
@@ -817,14 +826,14 @@ def createNextLayoutDynamically(pebs_df, mean_file, layout, exp_dir):
     results_df = loadDataframe(mean_file)
 
     # calculate the real-coverage for each group and update the log
-    # if the groups-log was not created yet then create it based on the 
+    # if the groups-log was not created yet then create it based on the
     # current results (this could happen if we started with the static
     # method and then decided to move to the dynamic method due to irregual
     # layouts real coverage, i.e. increasing the coverage causes to increasing
     # the walk cycles)
     groups_log = GroupsLog(exp_dir)
     if groups_log.empty():
-        results_df_sorted = results_df.sort_values('walk_cycles', 
+        results_df_sorted = results_df.sort_values('walk_cycles',
                                                    ascending=False)
         for index, row in results_df_sorted.iterrows():
             groups_log.addRecord(row['layout'], -1)
@@ -845,8 +854,8 @@ def createNextLayoutDynamically(pebs_df, mean_file, layout, exp_dir):
         if left_layout['remaining_budget'] > 0:
             break
     assert left_layout['remaining_budget'] > 0, 'already consumed all groups budgest but still have additional layouts to create!'
-    
-    state = StateLog(exp_dir, right_layout, left_layout)
+
+    state = StateLog(exp_dir, right_layout['layout'], left_layout['layout'])
     # if the state was not created yet then create it and add all
     # layouts that in the range [left_layout - right_layout]
     if state.empty():
@@ -860,15 +869,15 @@ def createNextLayoutDynamically(pebs_df, mean_file, layout, exp_dir):
         for index, row in state_layouts.iterrows():
             state.addRecord(row['layout'], 'none', 'none', -1, 'none', -1)
         state.writeLog()
-    
+
+    method, direction, value, base = findNextScanMethod(pebs_df, state, results_df, exp_dir)
+    windows, sliding = applyScanMethod(pebs_df, state, layout, base, method, direction, value)
+    writeLayout(layout, windows, exp_dir, sliding)
+    #state.addRecord(layout, method, direction, value, base, -1)
+
     # decrease current group's budget by 1
     groups_log.decreaseRemainingBudget(left_layout['layout'])
-    
-    method, direction, value, base = findNextScanMethod(pebs_df, state, results_df, exp_dir)
-    windows = applyScanMethod(pebs_df, state, layout, method, direction, value)
-    writeLayout(layout, windows, exp_dir)
-    state.addRecord(layout, method, direction, value, base, -1)
-    
+
 
 def __normalizePebsAccesses(pebs_mem_bins):
     # read mem-bins
@@ -931,4 +940,4 @@ if __name__ == "__main__":
             # 2.2. create additional 15 layouts dynamically (in runtime)
             createNextStaticLayout(pebs_df, args.mean_file,
                                    args.layout, args.exp_dir)
-    
+
