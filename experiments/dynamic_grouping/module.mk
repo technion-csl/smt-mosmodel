@@ -21,10 +21,6 @@ $(LAYOUT_FILES): $(DYNAMIC_GROUPING_EXPERIMENT)/layouts/%.csv: $(MEMORY_FOOTPRIN
 		--exp_dir=$(dir $@)/.. \
 		--mean_file=$(DYNAMIC_GROUPING_RESULTS)/mean.csv
 
-$(DYNAMIC_GROUPING_EXPERIMENT)/clean:
-	cd $(dir $@)
-	rm -f *.log
-
 override undefine NUM_LAYOUTS
 override undefine NUM_OF_REPEATS
 override undefine LAYOUTS
