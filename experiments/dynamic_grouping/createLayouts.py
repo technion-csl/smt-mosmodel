@@ -37,7 +37,10 @@ class Singleton(type):
 class Log():
     def __init__(self, exp_dir, results_df, log_name, default_columns):
         self._exp_dir = exp_dir
-        self._results_df = results_df.copy()
+        if results_df is None:
+            self._results_df = None
+        else:
+            self._results_df = results_df.copy()
         self._log_file = self._exp_dir + '/' + log_name
         self._default_columns = default_columns
         self._df = self.readLog()
@@ -87,6 +90,8 @@ class Log():
             return record.iloc[0]
 
     def writeRealCoverage(self):
+        if self._results_df is None:
+            return
         max_walk_cycles = self._results_df['walk_cycles'].max()
         min_walk_cycles = self._results_df['walk_cycles'].min()
         delta_walk_cycles = max_walk_cycles - min_walk_cycles
@@ -642,14 +647,20 @@ def createStatisLayouts(pebs_df, results_df, exp_dir, step_size):
     while tlb_coverage_percentage < 100:
         # 2.1.1. such that each layout covers 2.5% of TLB-misses more than previous layout (according to PEBS)
         windows = findTlbCoverageWindows(df, tlb_coverage_percentage, 0.5)
-        print('TLB-coverage = {coverage} - Paegs = {pages}'.format(coverage=tlb_coverage_percentage, pages=windows))
         layout_name = 'layout'+str(num_layout)
+        print('{layout}: TLB-coverage = {coverage} - Paegs = {pages}'.format(
+            layout=layout_name, coverage=tlb_coverage_percentage, pages=windows))
         writeLayout(layout_name, windows, exp_dir)
         # 2.1.2. for each layout log the following record:
         log.addRecord(layout_name, 'TBD', 'TBD',
                        tlb_coverage_percentage)
         num_layout += 1
         tlb_coverage_percentage += step_size
+    layout_name = 'layout'+str(num_layout)
+    print('{layout}: TLB-coverage = 100 - Paegs = all-pages'.format(
+        layout=layout_name))
+    writeLayoutAll2mb(layout_name, exp_dir)
+    log.addRecord(layout_name, 'TBD', 'TBD', 100)
     log.writeLog()
 
 import re
@@ -795,48 +806,7 @@ def getSlidingScanningParameters(pebs_df, state, exp_dir):
         assert False,'unkown scan-method: '+last_method
     return method, direction, value, base
 
-def __v1_getTailScanningParameters(pebs_df, state, exp_dir):
-    last_record = state.getLastRecord()
-    method = 'tail'
-    direction = 'increment'
-    value = 2.5
-    base = last_record['layout']
-
-    gap = state.getGapBetweenLastRecordAndBase()
-    print('--------------------------')
-    print('gap between last layout and its base: ' + str(gap))
-    print('--------------------------')
-    if state.isLastRecordInRange():
-        if gap < 0:
-            # it seems that static increment did not work
-            # therefore try the sliding method
-            return getSlidingScanningParameters(pebs_df, state, exp_dir)
-        elif gap > 3:
-            #value = (2.5 / gap) * 2.5
-            #value = last_record['scan_value'] / 2
-            value = (1 - (3 / gap)) * last_record['scan_value']
-            direction = 'decrement'
-            base = last_record['scan_base']
-        else: #gap < 2.5
-            #value = 2.5 + (2.5 - gap)
-            #value = 2.5 + last_record['expected_coverage']
-            #value = 2.5 + last_record['scan_value']
-            value = 2.5
-            direction = 'increment'
-            base = last_record['layout']
-    # if the last produced layout fall outside the current group region
-    # then use sliding
-    else:
-        if gap > 0:
-            #value = gap / 2
-            value = last_record['scan_value'] / 2
-            direction = 'decrement'
-            base = last_record['scan_base']
-        else:
-            method, direction, value, base = getSlidingScanningParameters(pebs_df, state, exp_dir)
-    return method, direction, value, base
-
-def __v2_getTailScanningParameters(pebs_df, state, exp_dir):
+def getTailScanningParameters(pebs_df, state, exp_dir):
     print('[DEBUG] --entry--> getTailScanningParameters')
     last_record = state.getLastRecord()
     method = 'tail'
@@ -898,7 +868,7 @@ def __v2_getTailScanningParameters(pebs_df, state, exp_dir):
     print('[DEBUG] <--exit-- getTailScanningParameters')
     return method, direction, value, base
 
-def getTailScanningParameters(pebs_df, state, exp_dir):
+def __v2_getTailScanningParameters(pebs_df, state, exp_dir):
     print('[DEBUG] --entry--> getTailScanningParameters')
     last_record = state.getLastRecord()
     method = 'tail'
@@ -952,6 +922,47 @@ def getTailScanningParameters(pebs_df, state, exp_dir):
             direction = 'increment'
             base = last_record['scan_base']
     print('[DEBUG] <--exit-- getTailScanningParameters')
+    return method, direction, value, base
+
+def __v1_getTailScanningParameters(pebs_df, state, exp_dir):
+    last_record = state.getLastRecord()
+    method = 'tail'
+    direction = 'increment'
+    value = 2.5
+    base = last_record['layout']
+
+    gap = state.getGapBetweenLastRecordAndBase()
+    print('--------------------------')
+    print('gap between last layout and its base: ' + str(gap))
+    print('--------------------------')
+    if state.isLastRecordInRange():
+        if gap < 0:
+            # it seems that static increment did not work
+            # therefore try the sliding method
+            return getSlidingScanningParameters(pebs_df, state, exp_dir)
+        elif gap > 3:
+            #value = (2.5 / gap) * 2.5
+            #value = last_record['scan_value'] / 2
+            value = (1 - (3 / gap)) * last_record['scan_value']
+            direction = 'decrement'
+            base = last_record['scan_base']
+        else: #gap < 2.5
+            #value = 2.5 + (2.5 - gap)
+            #value = 2.5 + last_record['expected_coverage']
+            #value = 2.5 + last_record['scan_value']
+            value = 2.5
+            direction = 'increment'
+            base = last_record['layout']
+    # if the last produced layout fall outside the current group region
+    # then use sliding
+    else:
+        if gap > 0:
+            #value = gap / 2
+            value = last_record['scan_value'] / 2
+            direction = 'decrement'
+            base = last_record['scan_base']
+        else:
+            method, direction, value, base = getSlidingScanningParameters(pebs_df, state, exp_dir)
     return method, direction, value, base
 
 def findNextScanMethod(pebs_df, state, exp_dir):
@@ -1119,12 +1130,14 @@ if __name__ == "__main__":
     brk_footprint = footprint_df['brk-max'][0]
     last_page = int(brk_footprint / 4096)
 
-    results_df = loadDataframe(args.mean_file)
+    results_df = None
+    if os.path.isfile(args.mean_file):
+        results_df = loadDataframe(args.mean_file)
 
     pebs_df = __normalizePebsAccesses(args.pebs_mem_bins)
 
     num_pages_to_examine = 10
-    head_pages_weight_threshold = 30
+    head_pages_weight_threshold = 50
     headPagesWeight = pebs_df.head(num_pages_to_examine)['NUM_ACCESSES'].sum()
     # 1. If first-10-pages weight > 30% then
     if headPagesWeight > head_pages_weight_threshold:
