@@ -3,9 +3,9 @@ SUBMODULES := \
 	memory_footprint \
 	single_page_size \
 	pebs_tlb_miss_trace \
-	auto_mosalloc \
-	dynamic_grouping \
+	static_auto_mosalloc \
 	dynamic_auto_mosalloc \
+	dynamic_grouping \
 	runtime_range \
 	growing_window_2m \
 	random_window_2m \

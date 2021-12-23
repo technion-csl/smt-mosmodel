@@ -7,9 +7,9 @@ SUBMODULES := \
 	linear_models_coeffs \
 	pebs_tlb_miss_trace \
 	subgroups_windows \
-	auto_mosalloc \
-	dynamic_grouping \
+	static_auto_mosalloc \
 	dynamic_auto_mosalloc \
+	dynamic_grouping \
 	runtime_range \
 	genetic_scan \
 	smart_genetic_scan \
