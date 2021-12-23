@@ -583,6 +583,7 @@ class LayoutGenerator():
         return new_layout_pages, actual_pebs_coverage
         
     def createNextLayoutDynamically(self):
+        assert self.results_df is not None,'results mean file does not exist'
         # fill or update GroupsLog and StateLog
         self._updateLogs()
         print(self.state_log)
@@ -654,6 +655,8 @@ class LayoutGeneratorUtils(metaclass=Singleton):
         pass
     
     def loadDataframe(mean_file):
+        if not os.path.isfile(mean_file):
+            return None
         mean_ps = PerformanceStatistics(mean_file)
         results_df = mean_ps.getDataFrame()
         results_df['cpu-cycles'] = mean_ps.getRuntime()
