@@ -22,7 +22,7 @@ class Singleton(type):
 class Log():
     def __init__(self, exp_dir, results_df, log_name, default_columns):
         self._exp_dir = exp_dir
-        self._results_df = results_df.copy()
+        self._results_df = results_df
         self._log_file = self._exp_dir + '/' + log_name
         self._default_columns = default_columns
         self._df = self.readLog()
@@ -61,7 +61,7 @@ class Log():
         if self.empty():
             return None
         return self._df.iloc[len(self._df)-1]
-    
+
     def getLastLayoutName(self):
         """
         Returns
@@ -152,12 +152,12 @@ class GroupsLog(Log, metaclass=Singleton):
     def decreaseRemainingBudget(self, layout):
         self._df.loc[self._df['layout'] == layout, 'remaining_budget'] = self._df.loc[self._df['layout'] == layout, 'remaining_budget']-1
         self.writeLog()
-    
-    def zeroBudget(self, layout):    
+
+    def zeroBudget(self, layout):
         self._df.loc[self._df['layout'] == layout, 'remaining_budget'] = 0
         self._df.loc[self._df['layout'] == layout, 'total_budget'] = 0
         self.writeLog()
-    
+
     def addExtraBudget(self, layout, extra_budget):
         self._df.loc[self._df['layout'] == layout, 'remaining_budget'] = self._df.loc[self._df['layout'] == layout, 'remaining_budget']+extra_budget
         self._df.loc[self._df['layout'] == layout, 'total_budget'] = self._df.loc[self._df['layout'] == layout, 'total_budget']+extra_budget
@@ -171,7 +171,7 @@ class StateLog(Log):
         default_columns = [
             'layout',
             'scan_method', 'scan_direction', 'scan_value', 'scan_base',
-            'pebs_coverage', 'real_coverage', 'walk_cycles', 
+            'pebs_coverage', 'real_coverage', 'walk_cycles',
             'pages', 'offset']
         self._right_layout = right_layout
         self._left_layout = left_layout
@@ -198,7 +198,7 @@ class StateLog(Log):
             }, ignore_index=True)
         if writeLog:
             self.writeLog()
-            
+
     def hasOnlyBaseLayouts(self):
         return self.getLastRecord()['scan_method'] == 'none'
 
@@ -296,7 +296,7 @@ class StateLog(Log):
 
     def getBaseLayout(self, layout_name):
         return self.getField('layout', layout_name, 'scan_base')
-    
+
     def getNextLayoutToIncrement(self, start_layout):
         max_coverage = self.getRealCoverage(self.getLeftLayoutName())
         #current_layout = self.getLastLayoutName()
@@ -357,7 +357,7 @@ class LayoutGenerator():
         self.exp_dir = exp_dir
         self.groups_log = GroupsLog(exp_dir, results_df)
         self.state_log = None
-    
+
     def generateLayout(self):
         if self.layout == 'layout1':
             # 1.1. create nine layouts statically (using PEBS output):
@@ -365,7 +365,7 @@ class LayoutGenerator():
         else:
             # 1.2. create other layouts dynamically
             self.createNextLayoutDynamically()
-            
+
     def _buildGroupsSequentially(self, desired_weights, all_pages):
         pebs_df = self.pebs_df[['PAGE_NUMBER', 'TLB_COVERAGE']]
         pebs_df = pebs_df.sort_values('TLB_COVERAGE', ascending=False)
@@ -478,7 +478,7 @@ class LayoutGenerator():
                 print('hugepages: ' + str(windows))
                 print('---------------')
                 if write_layouts:
-                    LayoutGeneratorUtils.writeLayout(self.layout, windows, self.exp_dir)
+                    LayoutGeneratorUtils.writeLayout(layout_name, windows, self.exp_dir)
                 self.groups_log.addRecord(layout_name, pebs_coverage)
         # 1.1.3. create additional layout in which all pages are backed with 2MB
         layout_name = 'layout' + str(i)
@@ -486,10 +486,10 @@ class LayoutGenerator():
         print('weight: 100%')
         print('hugepages: all pages')
         if write_layouts:
-            LayoutGeneratorUtils.writeLayoutAll2mb(self.layout, self.exp_dir)
+            LayoutGeneratorUtils.writeLayoutAll2mb(layout_name, self.exp_dir)
         self.groups_log.addRecord(layout_name, 100)
         self.groups_log.writeLog()
-    
+
     def _updateLogs(self):
         # calculate the real-coverage for each group and update the log
         # if the groups-log was not created yet then create it based on the
@@ -527,9 +527,9 @@ class LayoutGenerator():
                 self.groups_log.addExtraBudget(left_layout['layout'], extra_budget)
                 extra_budget = 0
             # initialize the state-log for the current group
-            self.state_log = StateLog(self.exp_dir, 
-                                      self.results_df, 
-                                      right_layout['layout'], 
+            self.state_log = StateLog(self.exp_dir,
+                                      self.results_df,
+                                      right_layout['layout'],
                                       left_layout['layout'])
             # if the state log is empty then it seems just now we are
             # about to start scanning this group
@@ -538,7 +538,7 @@ class LayoutGenerator():
             # else, this is not the first layout in this group
             next_layout = self.state_log.getNextLayoutToIncrement(
                 right_layout['layout'])
-            # if we already closed all gaps in this group then move the 
+            # if we already closed all gaps in this group then move the
             # left budget to the next group
             if next_layout == left_layout['layout']:
                 print('[DEBUG] closed all gaps before consuming all available budget, moving the remaining budget to the next group')
@@ -547,10 +547,10 @@ class LayoutGenerator():
                 continue
             else:
                 break
-        
+
         assert left_layout['remaining_budget'] > 0, 'already consumed all groups budgest but still have additional layouts to create!'
 
-        
+
         # if the state was not created yet then create it and add all
         # layouts that in the range [left_layout - right_layout]
         if self.state_log.empty():
@@ -567,30 +567,33 @@ class LayoutGenerator():
                     layout_name, self.exp_dir)
                 pebs_coverage = LayoutGeneratorUtils.calculateTlbCoverage(
                     self.pebs_df, pages)
-                self.state_log.addRecord(layout_name, 
+                self.state_log.addRecord(layout_name,
                                          'none', 'none', -1, 'none',
                                          pebs_coverage, pages, offset)
             self.state_log.writeLog()
             self.state_log.writeRealCoverage()
-            
+
     def _addTailPages(self, base_layout, desired_coverage):
         # TODO get the base pages from the state log instead of reading them
         # get the base
-        base_layout_pages = LayoutGeneratorUtils.getLayoutHugepages(
+        start_from_tail = True
+        base_layout_pages, offset = LayoutGeneratorUtils.getLayoutHugepages(
             base_layout, self.exp_dir)
         new_layout_pages, actual_pebs_coverage = LayoutGeneratorUtils.findTlbCoverageWindows(
-            self.pebs_df, desired_coverage, True, base_layout_pages)
+            self.pebs_df, desired_coverage, start_from_tail, base_layout_pages)
         return new_layout_pages, actual_pebs_coverage
-        
+
     def createNextLayoutDynamically(self):
         assert self.results_df is not None,'results mean file does not exist'
         # fill or update GroupsLog and StateLog
         self._updateLogs()
-        print(self.state_log)
-        
+        print('==============================================')
+        print(self.state_log._df)
+        print('----------------------------------------------')
+
         # initialize required values with None
         base_layout = desired_coverage = pages = pebs_coverage = how = None
-        
+
         # is this the first layout to be generated for the current group
         if self.state_log.hasOnlyBaseLayouts():
             base_layout = self.state_log.getNextLayoutToIncrement(
@@ -601,13 +604,13 @@ class LayoutGenerator():
             last_layout = self.state_log.getLastLayoutName()
             last_layout_pebs = self.state_log.getPebsCoverage(last_layout)
             last_increment = self.state_log.getGapBetweenLastRecordAndBase()
-            
-            # last laout was incremented by < 3% 
+
+            # last laout was incremented by < 3%
             # there are two cases here: less than 2% or btween 2% and 3%
             if last_increment <= 3:
                 base_layout = last_layout
                 how = 'increment'
-                # find next base layout by start looking from the last layout 
+                # find next base layout by start looking from the last layout
                 # until finding the first layout with a gap > 3
                 next_layout = self.state_log.getNextLayoutToIncrement(last_layout)
                 if next_layout == last_layout:
@@ -630,9 +633,10 @@ class LayoutGenerator():
                 base_layout = last_layout_base
                 base_layout_pebs = self.state_log.getPebsCoverage(base_layout)
                 delta = last_layout_pebs - base_layout_pebs
+                delta = 1 if delta < 1 else delta
                 desired_coverage =  base_layout_pebs + (delta / 2)
                 how = 'decrement'
-        
+
         pages, pebs_coverage = self._addTailPages(
             base_layout, desired_coverage)
         assert base_layout is not None
@@ -640,10 +644,16 @@ class LayoutGenerator():
         assert pages is not None
         assert pebs_coverage is not None
         assert how is not None
-        self.state_log.addRecord(self.layout, 
-                                 'tail', how, desired_coverage, base_layout, 
+        self.state_log.addRecord(self.layout,
+                                 'tail', how, desired_coverage, base_layout,
                                  pebs_coverage, pages, 0)
-        print(self.state_log)
+        print('----------------------------------------------')
+        print(self.state_log._df)
+        print('==============================================')
+        print(self.layout)
+        print('#hugepages: '+ str(len(pages)))
+        print('weight: ' + str(pebs_coverage))
+        print('==============================================')
         # write the layout configuration file
         LayoutGeneratorUtils.writeLayout(self.layout, pages, self.exp_dir)
         # decrease current group's budget by 1
@@ -653,7 +663,7 @@ class LayoutGenerator():
 class LayoutGeneratorUtils(metaclass=Singleton):
     def __init__(self):
         pass
-    
+
     def loadDataframe(mean_file):
         if not os.path.isfile(mean_file):
             return None
@@ -670,39 +680,39 @@ class LayoutGeneratorUtils(metaclass=Singleton):
         #df.drop_duplicates(inplace=True, subset=important_columns)
         df = df.drop_duplicates(subset=important_columns)
         return df
-    
+
     def findTlbCoverageWindows(
             pebs_df, tlb_coverage_percentage, start_from_tail, base_pages=[]):
-        
+
         # start from the given base layout
         windows = base_pages.copy()
         total_weight = LayoutGeneratorUtils.calculateTlbCoverage(pebs_df, windows)
         assert tlb_coverage_percentage >= total_weight,'findTlbCoverageWindows: the required tlb-coverage is less than base pages coverage'
         remainder_coverage = tlb_coverage_percentage - total_weight
-        # filter the PEBS dataframe to contain only relevant pages, i.e., 
-        # pages that are not in the base-layout and their weight/coverage 
+        # filter the PEBS dataframe to contain only relevant pages, i.e.,
+        # pages that are not in the base-layout and their weight/coverage
         # is less than the desired weight/coverage
         df = pebs_df.query(
             'TLB_COVERAGE <= {target_coverage} and PAGE_NUMBER not in {pages}'.format(
-                target_coverage=remainder_coverage, 
+                target_coverage=remainder_coverage,
                 pages=windows))
         # sort ascendingly if we need to find tail pages
         df = df.sort_values('TLB_COVERAGE', ascending=start_from_tail)
-        
+
         epsilon = 0.1
         pages = None
         coverage = 0
         while pages is None:
             pages, coverage = LayoutGeneratorUtils._findTlbCoverageWindows(
-                df, tlb_coverage_percentage, epsilon)
+                df, remainder_coverage, epsilon)
             epsilon += 0.1
-            if epsilon > 1:
+            if epsilon > 0.5:
                 break
-        assert pages is not None,'could find hugepages that covers the required percentage'
+        assert pages is not None,'could not find hugepages that covers the required percentage'
         windows += pages
         total_weight += coverage
         return windows, total_weight
-        
+
     def _findTlbCoverageWindows(
             df, tlb_coverage_percentage, epsilon):
         total_weight = 0
@@ -720,7 +730,7 @@ class LayoutGeneratorUtils(metaclass=Singleton):
                 or total_weight < (tlb_coverage_percentage - epsilon):
             return None, 0
         return windows, total_weight
-    
+
     def writeLayoutAll2mb(layout, output):
         page_size = 1 << 21
         brk_pool_size = Utils.round_up(brk_footprint, page_size)
@@ -776,7 +786,7 @@ class LayoutGeneratorUtils(metaclass=Singleton):
                 'PAGE_NUMBER in {pages}'.format(pages=pages))\
                         ['TLB_COVERAGE'].sum()
         return total_weight
-    
+
     def normalizePebsAccesses(pebs_mem_bins):
         # read mem-bins
         pebs_df = pd.read_csv(pebs_mem_bins, delimiter=',')
