@@ -21,30 +21,30 @@ class Singleton(type):
 
 class Log():
     def __init__(self, exp_dir, results_df, log_name, default_columns):
-        self._exp_dir = exp_dir
-        self._results_df = results_df
-        self._log_file = self._exp_dir + '/' + log_name
-        self._default_columns = default_columns
-        self._df = self.readLog()
+        self.exp_dir = exp_dir
+        self.results_df = results_df
+        self.log_file = self.exp_dir + '/' + log_name
+        self.default_columns = default_columns
+        self.df = self.readLog()
 
     def readLog(self):
-        if not os.path.isfile(self._log_file):
-            self._df = pd.DataFrame(columns=self._default_columns)
+        if not os.path.isfile(self.log_file):
+            self.df = pd.DataFrame(columns=self.default_columns)
         else:
-            self._df = pd.read_csv(self._log_file)
-        return self._df
+            self.df = pd.read_csv(self.log_file)
+        return self.df
 
     def writeLog(self):
-        self._df.to_csv(self._log_file, index=False)
+        self.df.to_csv(self.log_file, index=False)
 
     def clear(self):
-        self._df = pd.DataFrame(columns=self._default_columns)
+        self.df = pd.DataFrame(columns=self.default_columns)
 
     def empty(self):
-        return self._df.empty
+        return self.df.empty
 
     def getField(self, key_name, key_value, field_name):
-        field_val = self._df.loc[self._df[key_name] == key_value, field_name]
+        field_val = self.df.loc[self.df[key_name] == key_value, field_name]
         field_val = field_val.to_list()
         if field_val == []:
             return None
@@ -60,7 +60,7 @@ class Log():
     def getLastRecord(self):
         if self.empty():
             return None
-        return self._df.iloc[len(self._df)-1]
+        return self.df.iloc[len(self.df)-1]
 
     def getLastLayoutName(self):
         """
@@ -74,7 +74,7 @@ class Log():
         return last_record['layout']
 
     def getRecord(self, key_name, key_value):
-        record = self._df.query('{key} == "{value}"'.format(
+        record = self.df.query('{key} == "{value}"'.format(
             key=key_name,
             value=key_value))
         if record.empty:
@@ -83,18 +83,18 @@ class Log():
             return record.iloc[0]
 
     def writeRealCoverage(self):
-        max_walk_cycles = self._results_df['walk_cycles'].max()
-        min_walk_cycles = self._results_df['walk_cycles'].min()
+        max_walk_cycles = self.results_df['walk_cycles'].max()
+        min_walk_cycles = self.results_df['walk_cycles'].min()
         delta_walk_cycles = max_walk_cycles - min_walk_cycles
-        self._df['real_coverage'] = self._df['real_coverage'].astype(float)
-        query = self._df.query('real_coverage == (-1)')
+        self.df['real_coverage'] = self.df['real_coverage'].astype(float)
+        query = self.df.query('real_coverage == (-1)')
         for index, row in query.iterrows():
             layout = row['layout']
-            walk_cycles = self._results_df.loc[self._results_df['layout'] == layout, 'walk_cycles'].iloc[0]
+            walk_cycles = self.results_df.loc[self.results_df['layout'] == layout, 'walk_cycles'].iloc[0]
             real_coverage = (max_walk_cycles - walk_cycles) / delta_walk_cycles
             real_coverage *= 100
-            self._df.loc[self._df['layout'] == layout, 'real_coverage'] = real_coverage
-            self._df.loc[self._df['layout'] == layout, 'walk_cycles'] = walk_cycles
+            self.df.loc[self.df['layout'] == layout, 'real_coverage'] = real_coverage
+            self.df.loc[self.df['layout'] == layout, 'walk_cycles'] = walk_cycles
         self.writeLog()
 
 class GroupsLog(Log, metaclass=Singleton):
@@ -106,7 +106,7 @@ class GroupsLog(Log, metaclass=Singleton):
 
     def addRecord(self,
                   layout, pebs_coverage, writeLog=False):
-        self._df = self._df.append({
+        self.df = self.df.append({
             'layout': layout,
             'total_budget': -1,
             'remaining_budget': -1,
@@ -118,53 +118,53 @@ class GroupsLog(Log, metaclass=Singleton):
             self.writeLog()
 
     def calculateBudget(self):
-        query = self._df.query('real_coverage == (-1)')
+        query = self.df.query('real_coverage == (-1)')
         if len(query) > 0:
             raise Exception('GroupsLog.calculateBudget was called before updating the groups real_coverage.')
-        query = self._df.query('total_budget < 0')
+        query = self.df.query('total_budget < 0')
         if len(query) == 0:
             return
         # sort the group layouts by walk-cycles/real_coverage
-        self._df = self._df.sort_values('real_coverage', ascending=True)
+        self.df = self.df.sort_values('real_coverage', ascending=True)
         # calculate the diff between each two adjacent layouts
         # (call it delta[i] for the diff between group[i] and group[i+1])
-        self._df['delta'] = self._df['real_coverage'].diff().abs()
-        self._df['delta'] = self._df['delta'].fillna(0)
-        total_deltas = self._df.query('delta > 2.5')['delta'].sum()
+        self.df['delta'] = self.df['real_coverage'].diff().abs()
+        self.df['delta'] = self.df['delta'].fillna(0)
+        total_deltas = self.df.query('delta > 2.5')['delta'].sum()
         total_budgets = 46 # 55-9: num_layouts(55) - groups_layouts(9)
-        for index, row in self._df.iterrows():
+        for index, row in self.df.iterrows():
             delta = row['delta']
             # for each delta < 2.5 assign budget=0
             if delta <= 2.5:
                 budget = 0
             else:
                 budget = round((delta / total_deltas) * total_budgets)
-            self._df.at[index, 'total_budget'] = budget
-            self._df.at[index, 'remaining_budget'] = budget
+            self.df.at[index, 'total_budget'] = budget
+            self.df.at[index, 'remaining_budget'] = budget
         # fix total budgets due to rounding
-        rounded_total_budgets = self._df['total_budget'].sum()
+        rounded_total_budgets = self.df['total_budget'].sum()
         delta_budget = total_budgets - rounded_total_budgets
-        self._df.at[index, 'total_budget'] = budget + delta_budget
-        self._df.at[index, 'remaining_budget'] = budget + delta_budget
+        self.df.at[index, 'total_budget'] = budget + delta_budget
+        self.df.at[index, 'remaining_budget'] = budget + delta_budget
 
         self.writeLog()
 
     def decreaseRemainingBudget(self, layout):
-        self._df.loc[self._df['layout'] == layout, 'remaining_budget'] = self._df.loc[self._df['layout'] == layout, 'remaining_budget']-1
+        self.df.loc[self.df['layout'] == layout, 'remaining_budget'] = self.df.loc[self.df['layout'] == layout, 'remaining_budget']-1
         self.writeLog()
 
     def zeroBudget(self, layout):
-        self._df.loc[self._df['layout'] == layout, 'remaining_budget'] = 0
-        self._df.loc[self._df['layout'] == layout, 'total_budget'] = 0
+        self.df.loc[self.df['layout'] == layout, 'remaining_budget'] = 0
+        self.df.loc[self.df['layout'] == layout, 'total_budget'] = 0
         self.writeLog()
 
     def addExtraBudget(self, layout, extra_budget):
-        self._df.loc[self._df['layout'] == layout, 'remaining_budget'] = self._df.loc[self._df['layout'] == layout, 'remaining_budget']+extra_budget
-        self._df.loc[self._df['layout'] == layout, 'total_budget'] = self._df.loc[self._df['layout'] == layout, 'total_budget']+extra_budget
+        self.df.loc[self.df['layout'] == layout, 'remaining_budget'] = self.df.loc[self.df['layout'] == layout, 'remaining_budget']+extra_budget
+        self.df.loc[self.df['layout'] == layout, 'total_budget'] = self.df.loc[self.df['layout'] == layout, 'total_budget']+extra_budget
         self.writeLog()
 
     def writeLog(self):
-        self._df.to_csv(self._log_file, index=False)
+        self.df.to_csv(self.log_file, index=False)
 
 class StateLog(Log):
     def __init__(self, exp_dir, results_df, right_layout, left_layout):
@@ -173,18 +173,22 @@ class StateLog(Log):
             'scan_method', 'scan_direction', 'scan_value', 'scan_base',
             'pebs_coverage', 'real_coverage', 'walk_cycles',
             'pages', 'offset']
-        self._right_layout = right_layout
-        self._left_layout = left_layout
+        self.right_layout = right_layout
+        self.left_layout = left_layout
         state_name = right_layout + '_' +left_layout
         super().__init__(exp_dir, results_df, state_name + '_state.log', default_columns)
         super().writeRealCoverage()
+        subgroup_coverage = self.getPebsCoverage(left_layout) - self.getPebsCoverage(right_layout)
+        base_pages = self.getLayoutPages(right_layout) + self.getLayoutPages(left_layout)
+        self.df = LayoutGeneratorUtils.findMinimalWeightThresoldAndFilter_v2(
+            self.df, subgroup_coverage, base_pages)
 
     def addRecord(self,
                   layout,
                   scan_method, scan_direction, scan_value, scan_base,
                   pebs_coverage, pages, offset,
                   writeLog=True):
-        self._df = self._df.append({
+        self.df = self.df.append({
             'layout': layout,
             'scan_method': scan_method,
             'scan_direction': scan_direction,
@@ -199,14 +203,17 @@ class StateLog(Log):
         if writeLog:
             self.writeLog()
 
+    def getLayoutPages(self, layout):
+        return self.getField('layout', layout, 'pages')
+
     def hasOnlyBaseLayouts(self):
         return self.getLastRecord()['scan_method'] == 'none'
 
     def getRightLayoutName(self):
-        return self._right_layout
+        return self.right_layout
 
     def getLeftLayoutName(self):
-        return self._left_layout
+        return self.left_layout
 
     def getRigthRecord(self):
         assert(not self.empty())
@@ -252,10 +259,10 @@ class StateLog(Log):
             Returns False otherwise
         """
         #self.writeRealCoverage()
-        including_df_diffs = self._df.sort_values('real_coverage', ascending=True)
+        including_df_diffs = self.df.sort_values('real_coverage', ascending=True)
         including_max_diff = including_df_diffs['real_coverage'].diff().max()
 
-        excluding_df = self._df.iloc[0:len(self._df)-1]
+        excluding_df = self.df.iloc[0:len(self.df)-1]
         excluding_df_diffs = excluding_df.sort_values('real_coverage', ascending=True)
         excluding_max_diff = excluding_df_diffs['real_coverage'].diff().max()
 
@@ -274,11 +281,11 @@ class StateLog(Log):
             Returns False otherwise
         """
         #self.writeRealCoverage()
-        including_df_diffs = self._df.sort_values('real_coverage', ascending=True)
+        including_df_diffs = self.df.sort_values('real_coverage', ascending=True)
         including_df_diffs['diff'] = including_df_diffs['real_coverage'].diff()
         including_df_diffs = including_df_diffs.query('diff > 2.5')
 
-        excluding_df = self._df.iloc[0:len(self._df)-1]
+        excluding_df = self.df.iloc[0:len(self.df)-1]
         excluding_df_diffs = excluding_df.sort_values('real_coverage', ascending=True)
         excluding_df_diffs['diff'] = excluding_df_diffs['real_coverage'].diff()
         excluding_df_diffs = excluding_df_diffs.query('diff > 2.5')
@@ -303,7 +310,7 @@ class StateLog(Log):
         current_layout = start_layout
         current_coverage = self.getRealCoverage(current_layout)
         while current_coverage <= max_coverage:
-            query = self._df.query(
+            query = self.df.query(
                 'real_coverage > {current} and real_coverage <= {next}'.format(
                     current = current_coverage,
                     next = current_coverage+3))
@@ -338,7 +345,7 @@ class StateLog(Log):
         maximal gap that is greater than 2.5%
         """
         #self.writeRealCoverage()
-        diffs = self._df.sort_values('real_coverage', ascending=True)
+        diffs = self.df.sort_values('real_coverage', ascending=True)
         diffs['diff'] = diffs['real_coverage'].diff().abs()
 
         idx_label = diffs['diff'].idxmax()
@@ -366,7 +373,7 @@ class LayoutGenerator():
             # 1.2. create other layouts dynamically
             self.createNextLayoutDynamically()
 
-    def _buildGroupsSequentially(self, desired_weights, all_pages):
+    def buildGroupsSequentially(self, desired_weights, all_pages):
         pebs_df = self.pebs_df[['PAGE_NUMBER', 'TLB_COVERAGE']]
         pebs_df = pebs_df.sort_values('TLB_COVERAGE', ascending=False)
         groups = []
@@ -457,7 +464,7 @@ class LayoutGenerator():
         groups_pages = []
         # 1.1.1. create three groups of pages that are responsible for (50%, 20%, 10%)
         while len(groups) != 3:
-            g = self._buildGroupsSequentially(desired_weights, groups_pages)
+            g = self.buildGroupsSequentially(desired_weights, groups_pages)
             groups += g
             desired_weights = desired_weights[len(g):len(desired_weights)]
             # if we could not find the required groups with current weights
@@ -490,7 +497,7 @@ class LayoutGenerator():
         self.groups_log.addRecord(layout_name, 100)
         self.groups_log.writeLog()
 
-    def _updateLogs(self):
+    def updateLogs(self):
         # calculate the real-coverage for each group and update the log
         # if the groups-log was not created yet then create it based on the
         # current results (this could happen if we started with the static
@@ -573,7 +580,7 @@ class LayoutGenerator():
             self.state_log.writeLog()
             self.state_log.writeRealCoverage()
 
-    def _addTailPages(self, base_layout, desired_coverage):
+    def addTailPages(self, base_layout, desired_coverage):
         # TODO get the base pages from the state log instead of reading them
         # get the base
         start_from_tail = True
@@ -586,7 +593,7 @@ class LayoutGenerator():
     def createNextLayoutDynamically(self):
         assert self.results_df is not None,'results mean file does not exist'
         # fill or update GroupsLog and StateLog
-        self._updateLogs()
+        self.updateLogs()
         print('==============================================')
         print(self.state_log._df)
         print('----------------------------------------------')
@@ -637,7 +644,7 @@ class LayoutGenerator():
                 desired_coverage =  base_layout_pebs + (delta / 2)
                 how = 'decrement'
 
-        pages, pebs_coverage = self._addTailPages(
+        pages, pebs_coverage = self.addTailPages(
             base_layout, desired_coverage)
         assert base_layout is not None
         assert desired_coverage is not None
@@ -661,6 +668,9 @@ class LayoutGenerator():
             self.state_log.getLeftLayoutName())
 
 class LayoutGeneratorUtils(metaclass=Singleton):
+    HUGE_PAGE_2MB_SIZE = 2097152
+    BASE_PAGE_4KB_SIZE = 4096
+    
     def __init__(self):
         pass
 
@@ -681,6 +691,44 @@ class LayoutGeneratorUtils(metaclass=Singleton):
         df = df.drop_duplicates(subset=important_columns)
         return df
 
+    def findMinimalWeightThresoldAndFilter_v2(df, desired_weight, exclude_pages):
+        # filter the PEBS dataframe to contain only relevant pages, i.e.,
+        # pages that are not in the base-layout and their weight/coverage
+        # is less than the desired weight/coverage
+        # Additionally, filter-out the pebs dataframe to contain only tail 
+        # pages that could cover the required tlb-coverage
+        df = df.sort_values('TLB_COVERAGE', ascending=True)
+        total_weight = 0
+        for index, row in df.iterrows():
+            page = row['PAGE_NUMBER']
+            if page in exclude_pages:
+                continue
+            weight = row['TLB_COVERAGE']
+            total_weight += weight
+        df = df.query('TLB_COVERAGE <= {last_weight}'.format(last_weight=weight))
+        return df
+
+    def findMinimalWeightThresoldAndFilter_v1(df, desired_weight, exclude_pages):
+        # filter the PEBS dataframe to contain only relevant pages, i.e.,
+        # pages that are not in the base-layout and their weight/coverage
+        # is less than the desired weight/coverage
+        # TODO: another way to do that:
+            # sort the pebs dataframe ascendingly and scan it page by page
+            # to find the tail pages that can cover the required tlb-coverage
+        df = df.query(
+            'TLB_COVERAGE <= {target_coverage} and PAGE_NUMBER not in {pages}'.format(
+                target_coverage=desired_weight,
+                pages=exclude_pages))
+
+        total_weight = 0
+        threshold = 0.1
+        while total_weight < desired_weight:
+            df = df.query('TLB_COVERAGE <= {threshold}'.format(threshold=threshold))
+            total_weight = df['TLB_COVERAGE'].sum()
+            threshold += 0.1
+        df = df.sort_values('TLB_COVERAGE', ascending=False)
+        return df
+
     def findTlbCoverageWindows(
             pebs_df, tlb_coverage_percentage, start_from_tail, base_pages=[]):
 
@@ -689,15 +737,20 @@ class LayoutGeneratorUtils(metaclass=Singleton):
         total_weight = LayoutGeneratorUtils.calculateTlbCoverage(pebs_df, windows)
         assert tlb_coverage_percentage >= total_weight,'findTlbCoverageWindows: the required tlb-coverage is less than base pages coverage'
         remainder_coverage = tlb_coverage_percentage - total_weight
-        # filter the PEBS dataframe to contain only relevant pages, i.e.,
-        # pages that are not in the base-layout and their weight/coverage
-        # is less than the desired weight/coverage
-        df = pebs_df.query(
-            'TLB_COVERAGE <= {target_coverage} and PAGE_NUMBER not in {pages}'.format(
-                target_coverage=remainder_coverage,
-                pages=windows))
+        
+        # filter the pebs dataframe as following:
+        # 1. filter-out pages that are in the base-pages
+        # 2. keep only pages with minimal weight that can be used to acheive 
+        # the desired weight
+        
+        # TODO: check where and which is the best place to filter-out the
+        # pebs dataframe: here to filter-out for current two layouts
+        # or in the state-log constructor to filter-out for all subgroup range
+        # df = LayoutGeneratorUtils.findMinimalWeightThresoldAndFilter_v2(
+        #    pebs_df, remainder_coverage, windows)
         # sort ascendingly if we need to find tail pages
-        df = df.sort_values('TLB_COVERAGE', ascending=start_from_tail)
+        df = pebs_df
+        #df = df.sort_values('TLB_COVERAGE', ascending=start_from_tail)
 
         epsilon = 0.1
         pages = None
@@ -732,8 +785,9 @@ class LayoutGeneratorUtils(metaclass=Singleton):
         return windows, total_weight
 
     def writeLayoutAll2mb(layout, output):
-        page_size = 1 << 21
-        brk_pool_size = Utils.round_up(brk_footprint, page_size)
+        brk_pool_size = Utils.round_up(
+            brk_footprint, 
+            LayoutGeneratorUtils.HUGE_PAGE_2MB_SIZE)
         configuration = Configuration()
         configuration.setPoolsSize(
                 brk_size=brk_pool_size,
@@ -741,14 +795,14 @@ class LayoutGeneratorUtils(metaclass=Singleton):
                 mmap_size=mmap_footprint)
         configuration.addWindow(
                 type=configuration.TYPE_BRK,
-                page_size=page_size,
+                page_size=LayoutGeneratorUtils.HUGE_PAGE_2MB_SIZE,
                 start_offset=0,
                 end_offset=brk_pool_size)
         configuration.exportToCSV(output, layout)
 
     def writeLayout(layout, windows, output, sliding_index=0):
-        page_size = 1 << 21
-        hugepages_start_offset = sliding_index * 4096
+        page_size= LayoutGeneratorUtils.HUGE_PAGE_2MB_SIZE
+        hugepages_start_offset = sliding_index * LayoutGeneratorUtils.BASE_PAGE_4KB_SIZE
         brk_pool_size = Utils.round_up(brk_footprint, page_size) + hugepages_start_offset
         configuration = Configuration()
         configuration.setPoolsSize(
@@ -764,28 +818,28 @@ class LayoutGeneratorUtils(metaclass=Singleton):
         configuration.exportToCSV(output, layout)
 
     def getLayoutHugepages(layout_name, exp_dir):
+        page_size = LayoutGeneratorUtils.HUGE_PAGE_2MB_SIZE
         layout_file = str.format('{exp_root}/layouts/{layout_name}.csv',
                 exp_root=exp_dir,
                 layout_name=layout_name)
         df = pd.read_csv(layout_file)
         df = df[df['type'] == 'brk']
-        df = df[df['pageSize'] == 2097152]
+        df = df[df['pageSize'] == page_size]
         pages = []
         offset_deviation = 0
         for index, row in df.iterrows():
-            start_page = int(row['startOffset'] / 2097152)
-            end_page = int(row['endOffset'] / 2097152)
-            offset_deviation = int(row['startOffset'] % 2097152)
+            start_page = int(row['startOffset'] / page_size)
+            end_page = int(row['endOffset'] / page_size)
+            offset_deviation = int(row['startOffset'] % page_size)
             for i in range(start_page, end_page, 1):
                 pages.append(i)
-        start_deviation = offset_deviation / 4096
+        start_deviation = offset_deviation / LayoutGeneratorUtils.BASE_PAGE_4KB_SIZE
         return pages, start_deviation
 
     def calculateTlbCoverage(pebs_df, pages):
-        total_weight = pebs_df.query(
-                'PAGE_NUMBER in {pages}'.format(pages=pages))\
-                        ['TLB_COVERAGE'].sum()
-        return total_weight
+        selected_pages = pebs_df.query(
+                'PAGE_NUMBER in {pages}'.format(pages=pages))
+        return selected_pages['TLB_COVERAGE'].sum()
 
     def normalizePebsAccesses(pebs_mem_bins):
         # read mem-bins
@@ -806,7 +860,7 @@ class LayoutGeneratorUtils(metaclass=Singleton):
 
 
 import argparse
-def __parseArguments():
+def parseArguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('-m', '--memory_footprint', default='memory_footprint.txt')
     parser.add_argument('-p', '--pebs_mem_bins', default='mem_bins_2mb.csv')
@@ -816,7 +870,7 @@ def __parseArguments():
     return parser.parse_args()
 
 if __name__ == "__main__":
-    args = __parseArguments()
+    args = parseArguments()
 
     # read memory-footprints
     footprint_df = pd.read_csv(args.memory_footprint)
