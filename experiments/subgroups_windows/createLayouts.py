@@ -101,9 +101,35 @@ class LayoutGenerator():
                 break
         return groups
 
+    def findGroup(self, desired_weight, exclude_pages):
+        pebs_df = self.pebs_df[['PAGE_NUMBER', 'TLB_COVERAGE']]
+        pebs_df = pebs_df.query('PAGE_NUMBER not in {pages}'.format(pages=exclude_pages))
+        pebs_df.sort_values('TLB_COVERAGE', ascending=False)
+        total_weight = 0
+        pages = []
+        for index, row in pebs_df.iterrows():
+            weight = row['TLB_COVERAGE']
+            page = row['PAGE_NUMBER']
+            total_weight += weight
+            pages.append(page)
+            if total_weight > desired_weight:
+                break
+        return pages
+
+
+    def buildGroupsSparsely(self, desired_weights):
+        groups = []
+        all_pages = []
+        for w in desired_weights:
+            g = self.findGroup(w, all_pages)
+            groups.append(g)
+            all_pages += g
+        return groups
+
     def createGroups(self, write_layouts=True):
         i = 1
         desired_weights = [56, 28, 14]
+        '''
         groups = []
         groups_pages = []
         # 1.1.1. create three groups of pages that are responsible for (50%, 20%, 10%)
@@ -114,6 +140,8 @@ class LayoutGenerator():
             # if we could not find the required groups with current weights
             # then try to lower bound the desired weights
             desired_weights = [0.9*w for w in desired_weights]
+        '''
+        groups = self.buildGroupsSparsely(desired_weights)
         # 1.1.2. create eight layouts as all sub-groups of these three groups
         for subset_size in range(len(groups)+1):
             for subset in itertools.combinations(groups, subset_size):
@@ -139,7 +167,7 @@ class LayoutGenerator():
 class LayoutGeneratorUtils():
     HUGE_PAGE_2MB_SIZE = 2097152
     BASE_PAGE_4KB_SIZE = 4096
-    
+
     def __init__(self):
         pass
 
@@ -159,7 +187,7 @@ class LayoutGeneratorUtils():
         #df.drop_duplicates(inplace=True, subset=important_columns)
         df = df.drop_duplicates(subset=important_columns)
         return df
-    
+
     def calculateTlbCoverage(pebs_df, pages):
         selected_pages = pebs_df.query(
                 'PAGE_NUMBER in {pages}'.format(pages=pages))
@@ -167,7 +195,7 @@ class LayoutGeneratorUtils():
 
     def writeLayoutAll2mb(layout, output):
         brk_pool_size = Utils.round_up(
-            brk_footprint, 
+            brk_footprint,
             LayoutGeneratorUtils.HUGE_PAGE_2MB_SIZE)
         configuration = Configuration()
         configuration.setPoolsSize(
