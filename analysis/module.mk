@@ -7,6 +7,7 @@ SUBMODULES := \
 	linear_models_coeffs \
 	pebs_tlb_miss_trace \
 	subgroups_windows \
+	subgroups_uniformly_windows \
 	static_auto_mosalloc \
 	dynamic_auto_mosalloc \
 	dynamic_grouping \
