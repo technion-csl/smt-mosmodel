@@ -166,17 +166,20 @@ class LayoutGenerator():
 
     def createGrowingSubgroups(self):
         df = self.pebs_df
-        df.sort_values('PAGE_NUMBER', ascending=True)
+        df = df.sort_values('PAGE_NUMBER', ascending=True)
         total_weight = 0
         desired_weight = 0
         page_number = 0
-        for index, row in pebs_df.iterrows():
+        i = 1
+        for index, row in df.iterrows():
             if total_weight >= desired_weight:
+                print('==> desired weight: ' + str(desired_weight))
+                print('==> total weight: ' + str(total_weight))
                 desired_weight += 20
                 pages = list(range(page_number))
                 layout_name = 'layout' + str(i)
                 i += 1
-                pebs_coverage = LayoutGeneratorUtils.calculateTlbCoverage(pebs_df, pages)
+                pebs_coverage = LayoutGeneratorUtils.calculateTlbCoverage(df, pages)
                 print(layout_name)
                 print('#hugepages: '+ str(len(pages)))
                 print('weight: ' + str(pebs_coverage))
@@ -185,7 +188,7 @@ class LayoutGenerator():
                 LayoutGeneratorUtils.writeLayout(layout_name, pages, self.exp_dir)
             if desired_weight == 100:
                 break
-            page_number = row['PAGE_NUMBER'] + 1
+            page_number = int(row['PAGE_NUMBER']) + 1
             weight = row['TLB_COVERAGE']
             total_weight += weight
         # 1.1.3. create additional layout in which all pages are backed with 2MB
