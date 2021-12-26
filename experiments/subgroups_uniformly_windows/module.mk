@@ -1,6 +1,6 @@
 MODULE_NAME := experiments/subgroups_uniformly_windows
 
-NUM_LAYOUTS := 9
+NUM_LAYOUTS := 6
 undefine LAYOUTS #allow the template to create new layouts based on the new NUM_LAYOUTS
 
 include $(EXPERIMENTS_TEMPLATE)
