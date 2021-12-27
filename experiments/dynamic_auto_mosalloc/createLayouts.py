@@ -840,12 +840,12 @@ class LayoutGenerator():
                 base_layout = last_layout_base
                 base_layout_pebs = self.state_log.getPebsCoverage(base_layout)
                 if last_layout_method == 'right-tail':
-                    #desired_coverage = base_layout_pebs + (((last_layout_pebs - base_layout_pebs) / 2) * 1)
+                    desired_coverage = (base_layout_pebs + last_layout_pebs) / 2
                     print(f'[DEBUG]: starting to remove tail pages from: {last_layout}')
                     print(f'[DEBUG]: trying to reduce coverage from: {last_layout_pebs} to: {desired_coverage}')
                     pages, pebs_coverage = self.removeTailPagesFromRightBaseLayout(last_layout, base_layout)
                     assert pages is not None
-                    method = 'left-tail'
+                    method = 'right-tail'
                     how = f'decrement ({last_layout})'
                 elif last_layout_method == 'left-tail':
                     desired_real_coverage = self.state_log.getRealCoverage(base_layout) + 2.5
