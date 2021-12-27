@@ -807,10 +807,6 @@ class LayoutGenerator():
             desired_coverage = self.state_log.getPebsCoverage(base_layout) + 2.5
             how = 'increment'
         else: # this is not the first layout in the subgroup
-            scale = self.state_log.df['pebs_coverage'].mean() / self.state_log.df['real_coverage'].mean()
-            print(f'[DEBUG]: ===> pebs to real coverage scale: {scale} <===')
-            scale = min(2, scale)
-            print(f'[DEBUG]: ===> pebs to real coverage scale (limiting to <= 2): {scale} <===')
             last_layout = self.state_log.getLastLayoutName()
             last_layout_pebs = self.state_log.getPebsCoverage(last_layout)
             last_increment = self.state_log.getGapBetweenLastRecordAndBase()
@@ -824,14 +820,21 @@ class LayoutGenerator():
                 # until finding the first layout with a gap > 3
                 next_layout = self.state_log.getNextLayoutToIncrement(last_layout)
                 if next_layout == last_layout:
-                    desired_coverage = last_layout_pebs + (3 * scale)
+                    if last_increment < 2:
+                        #scale = self.state_log.df['pebs_coverage'].mean() / self.state_log.df['real_coverage'].mean()
+                        scale = 2.5 / last_increment
+                        scale = max(scale, 2)
+                        print(f'[DEBUG]: last layout closed a small gap (less than 2%) --> scaling increment value by: {scale}')
+                    else:
+                        scale = 1
+                    desired_coverage = last_layout_pebs + (2.5 * scale)
                 else:
                 # the last layout seems to have next layout(s) with gap
                 # less than 3%, then we should move to the last one of
                 # these layouts as our new base layout
                     base_layout = next_layout
                     base_layout_pebs = self.state_log.getPebsCoverage(base_layout)
-                    desired_coverage = base_layout_pebs + (2.5 * scale)
+                    desired_coverage = base_layout_pebs + 2.5
             else:
             # last layout was incremented by > 3%
                 how = 'decrement'
