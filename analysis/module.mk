@@ -8,6 +8,7 @@ SUBMODULES := \
 	pebs_tlb_miss_trace \
 	subgroups_windows \
 	subgroups_uniformly_windows \
+	subgroups_head_pages \
 	static_auto_mosalloc \
 	dynamic_auto_mosalloc \
 	dynamic_grouping \

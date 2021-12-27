@@ -12,6 +12,7 @@ SUBMODULES := \
 	sliding_window \
 	subgroups_windows \
 	subgroups_uniformly_windows \
+	subgroups_head_pages \
 	genetic_scan \
 	smart_genetic_scan
 SUBMODULES := $(addprefix $(MODULE_NAME)/,$(SUBMODULES))
