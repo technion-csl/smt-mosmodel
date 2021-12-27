@@ -415,10 +415,6 @@ class LayoutGenerator():
                     break
             if completed_layouts == 3:
                 break
-        print('========================================')
-        print(desired_weights)
-        print(group)
-        print('========================================')
         return group
 
     def createGroupWithSequentialPages(self):
@@ -521,6 +517,7 @@ class LayoutGenerator():
         return group
 
     def createSubgroups(self, group):
+        total_pages = len(self.pebs_df)
         i = 1
         # 1.1.2. create eight layouts as all subgroups of these three group layouts
         for subset_size in range(len(group)+1):
@@ -532,7 +529,10 @@ class LayoutGenerator():
                 i += 1
                 pebs_coverage = LayoutGeneratorUtils.calculateTlbCoverage(self.pebs_df, windows)
                 print(layout_name)
-                print('#hugepages: '+ str(len(windows)))
+                print('#hugepages: {num} (~{percent}%) out of {total}'.format(
+                    num=len(windows),
+                    percent=round(len(windows)/total_pages * 100),
+                    total=total_pages))
                 print('weight: ' + str(pebs_coverage))
                 print('hugepages: ' + str(windows))
                 print('---------------')
