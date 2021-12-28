@@ -764,6 +764,7 @@ class LayoutGenerator():
 
         candidate_pages = list(set(pages) - set(base_pages))
         candidates = self.pebs_df.query('PAGE_NUMBER in {pages}'.format(pages=candidate_pages))
+        print(f'[DEBUG]: number of candidate pages to be removed: {len(candidate_pages)} with total-coverage={candidates["TLB_COVERAGE"].sum()}')
         sorted_candidates = candidates.sort_values('TLB_COVERAGE')
         i = 0
         removed_pages = []
@@ -804,6 +805,7 @@ class LayoutGenerator():
         # is this the first layout to be generated for the current group
         if self.state_log.hasOnlyBaseLayouts():
             base_layout = self.state_log.getRightLayoutName()
+            base_layout = self.state_log.getNextLayoutToIncrement(base_layout)
             desired_coverage = self.state_log.getPebsCoverage(base_layout) + 2.5
             how = 'increment'
         else: # this is not the first layout in the subgroup
@@ -847,22 +849,25 @@ class LayoutGenerator():
                     print(f'[DEBUG]: starting to remove tail pages from: {last_layout}')
                     print(f'[DEBUG]: trying to reduce coverage from: {last_layout_pebs} to: {desired_coverage}')
                     pages, pebs_coverage = self.removeTailPagesFromRightBaseLayout(last_layout, base_layout)
-                    assert pages is not None
                     method = 'right-tail'
                     how = f'decrement ({last_layout})'
-                elif last_layout_method == 'left-tail':
+                    # note that pags can be None here in case that removeTailPagesFromRightBaseLayout
+                    # cannot find pages to remove. This could happen if the last layout has only one
+                    # page added to base layout, in this case either we remove this page but then we
+                    # will have the same layout as the base or to keep it and then we will remain in
+                    # the last layout. In this case, move to use remove-tail from the left layout
+                if last_layout_method == 'left-tail' or (last_layout_method == 'right-tail' and pages is None):
                     desired_real_coverage = self.state_log.getRealCoverage(base_layout) + 2.5
                     leftmost = last_layout
                     pages, pebs_coverage = self.removeTailPagesFromLeftBaseLayout(
                             leftmost, desired_real_coverage)
                     method = 'left-tail'
                     how = f'decrement ({leftmost})'
-                else:
-                    assert False,'unkown scan method: ' + last_layout_method
                 desired_coverage = f'{pebs_coverage} (auto)'
 
-        if pages is None:
+        if how == 'increment' and pages is None:
             pages, pebs_coverage = self.addPages(base_layout, desired_coverage)
+        # if all previous methods did not work, then try to remove tail pages from the leftmost layout
         if pages is None:
             print('[DEBUG]: cannot add pages, trying removing tail pages from the left layout...')
             desired_real_coverage = self.state_log.getRealCoverage(base_layout) + 2.5
