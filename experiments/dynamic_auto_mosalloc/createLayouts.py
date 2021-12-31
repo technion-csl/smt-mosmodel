@@ -397,8 +397,7 @@ class LayoutGenerator():
 
         return group
 
-    def fillBuckets(self, df, bucket_sizes, fill_only_one_slot=False):
-        buckets = bucket_sizes.copy()
+    def fillBuckets(self, df, buckets, fill_only_one_slot=False):
         group = [[], [], []]
         i = 0
         for index, row in df.iterrows():
@@ -651,28 +650,34 @@ class LayoutGenerator():
         return new_layout_pages, actual_pebs_coverage
 
     def removeTailPagesBasedOnRealCoverage(self, base_layout, desired_real_coverage):
-        pages, offset = LayoutGeneratorUtils.getLayoutHugepages(base_layout, self.exp_dir)
-        df = self.pebs_df.query('PAGE_NUMBER in {pages}'.format(pages=pages))
-        df = df.sort_values('TLB_COVERAGE', ascending=False)
-        base_layout_coverage = df['TLB_COVERAGE'].sum()
         base_layout_real_coverage = self.state_log.getRealCoverage(base_layout)
         base_layout_pebs_coverage = self.state_log.getPebsCoverage(base_layout)
         base_layout_real_to_pebs_scale = base_layout_pebs_coverage / base_layout_real_coverage
         scaled_desired_coverage = base_layout_real_to_pebs_scale * desired_real_coverage
 
-        print('[DEBUG]: trying to remove tail pages from the leftmost subgroup layout (or some other derived layout from it)')
-        print(f'[DEBUG]: subgroup layout to remove from it: {base_layout}')
-        print(f'[DEBUG]: {base_layout} coverage: {base_layout_coverage}')
         print(f'[DEBUG]: desired real coverage: {desired_real_coverage}')
         print(f'[DEBUG]: scaled desired pebs coverage: {scaled_desired_coverage}')
 
-        assert scaled_desired_coverage < base_layout_coverage
+        return self.removeTailPagesBasedOnPebsCoverage(
+            base_layout, scaled_desired_coverage)
+
+    def removeTailPagesBasedOnPebsCoverage(self, base_layout, desired_coverage):
+        pages, offset = LayoutGeneratorUtils.getLayoutHugepages(
+            base_layout, self.exp_dir)
+        df = self.pebs_df.query(f'PAGE_NUMBER in {pages}')
+        df = df.sort_values('TLB_COVERAGE', ascending=False)
+        base_layout_coverage = df['TLB_COVERAGE'].sum()
+
+        assert desired_coverage < base_layout_coverage
+
+        print(f'[DEBUG]: subgroup layout to remove from it: {base_layout}')
+        print(f'[DEBUG]: {base_layout} coverage: {base_layout_coverage}')
 
         removed_pages = []
         total_weight = base_layout_coverage
         epsilon = 0.2
-        max_coverage = scaled_desired_coverage
-        min_coverage = scaled_desired_coverage - epsilon
+        max_coverage = desired_coverage
+        min_coverage = desired_coverage - epsilon
         for index, row in df.iterrows():
             page = row['PAGE_NUMBER']
             weight = row['TLB_COVERAGE']
@@ -783,21 +788,15 @@ class LayoutGenerator():
                 base_layout = last_layout_base
                 base_layout_pebs = self.state_log.getPebsCoverage(base_layout)
                 if last_layout_method == 'right-tail':
-                    factor = 2
-                    last_layout_how = self.state_log.getField('layout', last_layout, 'scan_direction')
-                    if 'decrement' in last_layout_how:
-                        factor = self.state_log.getRealCoverage(last_layout) / self.state_log.getExpectedRealCoverage(last_layout)
-                    desired_coverage = (base_layout_pebs + last_layout_pebs) / factor
                     print(f'[DEBUG]: starting to remove tail pages from: {last_layout}')
                     print(f'[DEBUG]: trying to reduce coverage from: {last_layout_pebs} to: {desired_coverage}')
-                    pages, pebs_coverage = self.removeTailPagesByFactor(last_layout, base_layout, factor)
+                    last_layout_real_coverage = self.state_log.getRealCoverage(last_layout)
+                    pebs_to_real_coverage_ratio = last_layout_pebs / last_layout_real_coverage
+                    desired_coverage = pebs_to_real_coverage_ratio * self.state_log.getExpectedRealCoverage(last_layout)
+                    pages, pebs_coverage = self.removeTailPagesBasedOnPebsCoverage(
+                            last_layout, desired_coverage)
                     method = 'right-tail'
                     how = f'decrement ({last_layout})'
-                    # note that pags can be None here in case that removeTailPagesByFactor
-                    # cannot find pages to remove. This could happen if the last layout has only one
-                    # page added to base layout, in this case either we remove this page but then we
-                    # will have the same layout as the base or to keep it and then we will remain in
-                    # the last layout. In this case, move to use remove-tail from the left layout
                 if last_layout_method == 'left-tail' or (last_layout_method == 'right-tail' and pages is None):
                     desired_real_coverage = self.state_log.getRealCoverage(base_layout) + INCREMENT
                     leftmost = last_layout
