@@ -694,7 +694,7 @@ class LayoutGenerator():
         return new_pages, new_pebs_coverage
 
     def removeTailPagesByFactor(self, layout, base_layout, factor=2):
-        assert factor > 2
+        assert factor >= 2
         pages, offset = LayoutGeneratorUtils.getLayoutHugepages(layout, self.exp_dir)
         base_pages, offset = LayoutGeneratorUtils.getLayoutHugepages(base_layout, self.exp_dir)
         pages_coverage = LayoutGeneratorUtils.calculateTlbCoverage(self.pebs_df, pages)
