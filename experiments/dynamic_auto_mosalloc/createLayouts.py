@@ -179,6 +179,22 @@ class SubgroupsLog(Log, metaclass=Singleton):
         self.df.loc[self.df['layout'] == layout, 'total_budget'] = self.df.loc[self.df['layout'] == layout, 'total_budget']+extra_budget
         self.writeLog()
 
+    def getRightmostLayout(self):
+        self.writeRealCoverage()
+        df = self.df.sort_values('walk_cycles', ascending=False)
+        return df.iloc[0]['layout']
+
+    def getLeftmostLayout(self):
+        self.writeRealCoverage()
+        df = self.df.sort_values('walk_cycles', ascending=True)
+        return df.iloc[0]['layout']
+
+    def getTotalRemainingBudget(self):
+        return self.df['remaining_budget'].sum()
+
+    def getTotalBudget(self):
+        return self.df['total_budget'].sum()
+
 
 class StateLog(Log):
     def __init__(self, exp_dir, results_df, right_layout, left_layout):
@@ -312,7 +328,7 @@ class StateLog(Log):
         return self.getField('layout', layout_name, 'scan_base')
 
     def getNextLayoutToIncrement(self, start_layout):
-        start_layout_coverage = self.getRealCoverage(start_layout)        
+        start_layout_coverage = self.getRealCoverage(start_layout)
         df = self.df.query(f'real_coverage >= {start_layout_coverage}')
         df = df.sort_values('real_coverage', ascending=True)
         current_coverage = start_layout_coverage
@@ -417,7 +433,7 @@ class LayoutGenerator():
                 windows = []
                 for l in subset:
                     windows += l
-                layout_name = 'layout' + str(i)
+                layout_name = f'layout{i}'
                 i += 1
                 pebs_coverage = LayoutGeneratorUtils.calculateTlbCoverage(self.pebs_df, windows)
                 print(layout_name)
@@ -431,7 +447,7 @@ class LayoutGenerator():
                 LayoutGeneratorUtils.writeLayout(layout_name, windows, self.exp_dir)
                 self.subgroups_log.addRecord(layout_name, pebs_coverage)
         # 1.1.3. create additional layout in which all pages are backed with 2MB
-        layout_name = 'layout' + str(i)
+        layout_name = f'layout{i}'
         print(layout_name)
         print('weight: 100%')
         print('hugepages: all pages')
@@ -458,6 +474,7 @@ class LayoutGenerator():
         self.subgroups_log.calculateBudget()
 
         extra_budget = 0
+        found = False
         # find the first group that still has a remaining budget
         for i in range(len(self.subgroups_log.df)-1):
             right_layout = self.subgroups_log.df.iloc[i]
@@ -482,8 +499,8 @@ class LayoutGenerator():
             # if the state log is empty then it seems just now we are
             # about to start scanning this group
             if self.state_log.empty():
-                break
-            # else, this is not the first layout in this group
+                self.initializeStateLog(right_layout, left_layout)
+            # check if the current group's gaps already closed
             next_layout = self.state_log.getNextLayoutToIncrement(
                 right_layout['layout'])
             # if we already closed all gaps in this group then move the
@@ -494,11 +511,43 @@ class LayoutGenerator():
                 self.subgroups_log.zeroBudget(left_layout['layout'])
                 continue
             else:
+                found = True
                 break
 
-        assert left_layout['remaining_budget'] > 0, 'already consumed all subgroups budgest but still have additional layouts to create!'
+        if not found:
+            remaining_budget = self.subgroups_log.getTotalRemainingBudget()
+            assert remaining_budget > 0, 'a layout is requested to be generated but there is still no remaining budget to create it'
+            print('finished the last group but there is still remaining budget.')
+            print('using the remaining budget to look for previous groups that have more gaps to close')
+            right = self.subgroups_log.getRightmostLayout()
+            left = self.subgroups_log.getLeftmostLayout()
+            self.state_log = StateLog(self.exp_dir,
+                                      self.results_df,
+                                      right, left)
+            if self.state_log.empty():
+                self.initializeStateLog(left, right)
+            next_layout = self.state_log.getNextLayoutToIncrement(right['layout'])
+            if next_layout == left['layout']:
+                print('Finished closing all gaps but there is still remaining budget that is not used')
+                print('trying to improve max gap furthermore')
+                self.ImproveMaxGapFurthermore()
+                sys.exit(0)
 
+    def ImproveMaxGapFurthermore(self):
+        right, left = self.state_log.getMaxGapNewBaseLayout()
+        desired_coverage = (self.state_log.getPebsCoverage(right) + self.state_log.getPebsCoverage(left)) / 2
+        pages, pebs_coverage = self.addPages(right, desired_coverage)
+        if pages is None:
+            desired_real_coverage = (self.state_log.getRealCoverage(right) + self.state_log.getRealCoverage(left)) / 2
+            pages, pebs_coverage = self.removeTailPagesBasedOnRealCoverage(
+                    left, desired_real_coverage)
+        assert pages is not None
+        LayoutGeneratorUtils.writeLayout(self.layout, pages, self.exp_dir)
+        # decrease current group's budget by 1
+        self.subgroups_log.decreaseRemainingBudget(
+            self.state_log.getLeftLayoutName())
 
+    def initializeStateLog(self, right_layout, left_layout):
         # if the state was not created yet then create it and add all
         # layouts that in the range [left_layout - right_layout]
         if self.state_log.empty():
