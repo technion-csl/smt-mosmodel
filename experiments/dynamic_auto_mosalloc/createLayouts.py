@@ -589,7 +589,7 @@ class LayoutGenerator():
                 pages, pebs_coverage = self.addTailPagesBasedOnRealCoverage(base_layout, desired_real_coverage, tail=False)
         return pages, pebs_coverage
 
-    def addTailPagesBasedOnRealCoverage(self, base_layout, desired_real_coverage):
+    def addTailPagesBasedOnRealCoverage(self, base_layout, desired_real_coverage, tail=True):
         base_layout_real_coverage = self.state_log.getRealCoverage(base_layout)
         base_layout_pebs_coverage = self.state_log.getPebsCoverage(base_layout)
         base_layout_real_to_pebs_scale = base_layout_pebs_coverage / base_layout_real_coverage
@@ -602,7 +602,7 @@ class LayoutGenerator():
 
         assert scaled_desired_coverage > base_layout_pebs_coverage
 
-        return self.addPagesBasedOnPebsCoverage(base_layout, scaled_desired_coverage)
+        return self.addPagesBasedOnPebsCoverage(base_layout, scaled_desired_coverage, tail)
 
     def addPagesBasedOnPebsCoverage(self, base_layout, desired_coverage, tail=True):
         base_layout_pebs_coverage = self.state_log.getPebsCoverage(base_layout)
