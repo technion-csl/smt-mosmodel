@@ -344,14 +344,7 @@ class StateLog(Log):
                 break
         return current_layout
 
-    def getMaxGapNewBaseLayout(self):
-        """
-        Returns a new layout to be used as a base for scanning the space
-        and closing the gap between the right and left layouts of current
-        state.
-        The new base_layout is found by looking for a layout with the
-        maximal gap that is greater than MAX_GAP%
-        """
+    def getMaxGapLayouts(self):
         diffs = self.df.sort_values('real_coverage', ascending=True)
         diffs['diff'] = diffs['real_coverage'].diff().abs()
 
@@ -359,8 +352,6 @@ class StateLog(Log):
         idx = diffs.index.get_loc(idx_label)
         right = diffs.iloc[idx-1]
         left = diffs.iloc[idx]
-        if max(right['diff'], left['diff']) <= MAX_GAP:
-            return None, None
         return right['layout'], left['layout']
 
 
@@ -508,7 +499,9 @@ class LayoutGenerator():
             # if we already closed all gaps in this group then move the
             # left budget to the next group
             if next_layout == left_layout['layout']:
+                print('===========================================================')
                 print('[DEBUG] closed all gaps before consuming all available budget, moving the remaining budget to the next group')
+                print('===========================================================')
                 extra_budget += remaining_budget
                 self.subgroups_log.zeroBudget(left_layout['layout'])
                 continue
@@ -540,7 +533,10 @@ class LayoutGenerator():
                 sys.exit(0)
 
     def ImproveMaxGapFurthermore(self):
-        right, left = self.state_log.getMaxGapNewBaseLayout()
+        print(self.state_log)
+        right, left = self.state_log.getMaxGapLayouts()
+        max_gap = abs(self.state_log.getRealCoverage(right) - self.state_log.getRealCoverage(left))
+        print(f'[DEBUG]: >>>>>>>>>> current max-gap: {max_gap} <<<<<<<<<<')
         desired_coverage = (self.state_log.getPebsCoverage(right) + self.state_log.getPebsCoverage(left)) / 2
         pages, pebs_coverage = self.addPages(right, desired_coverage)
         if pages is None:
