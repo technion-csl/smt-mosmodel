@@ -529,22 +529,30 @@ class LayoutGenerator():
             if next_layout == left['layout']:
                 print('Finished closing all gaps but there is still remaining budget that is not used')
                 print('trying to improve max gap furthermore')
-                self.ImproveMaxGapFurthermore()
+                self.improveMaxGapFurthermore()
                 sys.exit(0)
 
-    def ImproveMaxGapFurthermore(self):
+    def improveMaxGapFurthermore(self):
         print(self.state_log.df)
+        method = 'right-tail'
+        how = 'increment'
         right, left = self.state_log.getMaxGapLayouts()
         max_gap = abs(self.state_log.getRealCoverage(right) - self.state_log.getRealCoverage(left))
         print(f'[DEBUG]: >>>>>>>>>> current max-gap: {max_gap} <<<<<<<<<<')
+        base_layout = right
         desired_coverage = (self.state_log.getPebsCoverage(right) + self.state_log.getPebsCoverage(left)) / 2
+        expected_real_coverage = (self.state_log.getRealCoverage(right) + self.state_log.getRealCoverage(left)) / 2
         pages, pebs_coverage = self.addPages(right, desired_coverage)
         if pages is None:
             desired_real_coverage = (self.state_log.getRealCoverage(right) + self.state_log.getRealCoverage(left)) / 2
             pages, pebs_coverage = self.removeTailPagesBasedOnRealCoverage(
                     left, desired_real_coverage)
+            how = f'decrement ({left})'
         assert pages is not None
         LayoutGeneratorUtils.writeLayout(self.layout, pages, self.exp_dir)
+        self.state_log.addRecord(self.layout,
+                                 method, how, desired_coverage, base_layout,
+                                 pebs_coverage, expected_real_coverage, pages, 0)
         # decrease current group's budget by 1
         self.subgroups_log.decreaseRemainingBudget(
             self.state_log.getLeftLayoutName())
@@ -761,8 +769,9 @@ class LayoutGenerator():
             print(f'[DEBUG]: gap (of the real coverage) for the last layout: {last_increment}')
             if last_increment <= 0:
                 print(f'[WARNING]: {last_layout} got a lower real-coverage than its base eventhough it has a higher pebs-coverage.')
-                base_layout = last_layout
-                desired_coverage = self.state_log.getPebsCoverage(base_layout) + MAX_GAP
+                last_layout_base = self.state_log.getBaseLayout(last_layout)
+                base_layout = last_layout_base
+                desired_coverage = self.state_log.getPebsCoverage(last_layout) + MAX_GAP
                 how = 'increment'
             # last laout was incremented by < MAX_GAP%
             # there are two cases here: less than LOW_GAP% or btween LOW_GAP% and MAX_GAP%
