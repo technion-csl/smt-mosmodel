@@ -477,48 +477,44 @@ class LayoutGenerator():
                                       self.results_df,
                                       right_layout['layout'],
                                       left_layout['layout'])
+            # if the state log is empty then it seems just now we are
+            # about to start scanning this group
+            if self.state_log.empty():
+                self.initializeStateLog(right_layout, left_layout)
             # update state log real coverage for current and previous completed subsubgroups
-            if not self.state_log.empty():
+            else:
                 self.state_log.writeRealCoverage()
+            # if we already closed all gaps in this group then move the
+            # left budget to the next group
+            next_layout = self.state_log.getNextLayoutToIncrement(
+                right_layout['layout'])
+            if next_layout == left_layout['layout']:
+                print('===========================================================')
+                print('[DEBUG] closed all gaps before consuming all available budget, moving the remaining budget to the next group')
+                print('===========================================================')
+                self.subgroups_log.zeroBudget(left_layout['layout'])
+                continue
+            extra_budget = MAX_TRIALS - (self.subgroups_log.getTotalBudget() + 9)
             # if already consumed the total budget then move to next group
             remaining_budget = left_layout['remaining_budget']
-            if remaining_budget == 0:
+            if (remaining_budget + extra_budget) == 0:
                 continue
             # if there is an extra budget that remained---and not used---from
             # previous group, then add it to current group
             if extra_budget > 0:
                 self.subgroups_log.addExtraBudget(left_layout['layout'], extra_budget)
-                extra_budget = 0
-            # if the state log is empty then it seems just now we are
-            # about to start scanning this group
-            if self.state_log.empty():
-                self.initializeStateLog(right_layout, left_layout)
-            # check if the current group's gaps already closed
-            next_layout = self.state_log.getNextLayoutToIncrement(
-                right_layout['layout'])
-            # if we already closed all gaps in this group then move the
-            # left budget to the next group
-            if next_layout == left_layout['layout']:
-                print('===========================================================')
-                print('[DEBUG] closed all gaps before consuming all available budget, moving the remaining budget to the next group')
-                print('===========================================================')
-                extra_budget += remaining_budget
-                self.subgroups_log.zeroBudget(left_layout['layout'])
-                continue
-            else:
-                found = True
-                break
+            found = True
+            break
 
         if not found:
-            print('finished the last group but there is still remaining budget.')
+            extra_budget = MAX_TRIALS - (self.subgroups_log.getTotalBudget() + 9)
+            print(f'finished the last group but there is still ({extra_budget}) remaining budget.')
             print('using the remaining budget to look for previous groups that have more gaps to close')
             right = self.subgroups_log.getRightmostLayout()
             left = self.subgroups_log.getLeftmostLayout()
 
             if extra_budget > 0:
-                self.subgroups_log.addExtraBudget(left['layout'], extra_budget)
-            remaining_budget = self.subgroups_log.getTotalRemainingBudget()
-            assert remaining_budget > 0, 'a layout is requested to be generated but there is still no remaining budget to create it'
+                selif.subgroups_log.addExtraBudget(left['layout'], 1)
 
             self.state_log = StateLog(self.exp_dir,
                                       self.results_df,
