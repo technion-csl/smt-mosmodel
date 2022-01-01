@@ -763,9 +763,14 @@ class LayoutGenerator():
             last_layout_pebs = self.state_log.getPebsCoverage(last_layout)
             last_increment = self.state_log.getGapBetweenLastRecordAndBase()
             print(f'[DEBUG]: gap (of the real coverage) for the last layout: {last_increment}')
+            if last_increment <= 0:
+                print(f'[WARNING]: {last_layout} got a lower real-coverage than its base eventhough it has a higher pebs-coverage.')
+                base_layout = last_layout
+                desired_coverage = self.state_log.getPebsCoverage(base_layout) + MAX_GAP
+                how = 'increment'
             # last laout was incremented by < MAX_GAP%
             # there are two cases here: less than LOW_GAP% or btween LOW_GAP% and MAX_GAP%
-            if last_increment <= MAX_GAP:
+            elif last_increment <= MAX_GAP:
                 base_layout = last_layout
                 how = 'increment'
                 # find next base layout by start looking from the last layout
