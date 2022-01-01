@@ -171,6 +171,9 @@ class SubgroupsLog(Log, metaclass=Singleton):
         self.writeLog()
 
     def zeroBudget(self, layout):
+        total = self.getField('layout', layout, 'total_budget')
+        remaining = self.getField('layout', layout, 'remaining_budget')
+        self.df.loc[self.df['layout'] == layout, 'total_budget'] = total - remaining
         self.df.loc[self.df['layout'] == layout, 'remaining_budget'] = 0
         self.writeLog()
 
@@ -182,12 +185,12 @@ class SubgroupsLog(Log, metaclass=Singleton):
     def getRightmostLayout(self):
         self.writeRealCoverage()
         df = self.df.sort_values('walk_cycles', ascending=False)
-        return df.iloc[0]['layout']
+        return df.iloc[0]
 
     def getLeftmostLayout(self):
         self.writeRealCoverage()
         df = self.df.sort_values('walk_cycles', ascending=True)
-        return df.iloc[0]['layout']
+        return df.iloc[0]
 
     def getTotalRemainingBudget(self):
         return self.df['remaining_budget'].sum()
@@ -514,17 +517,21 @@ class LayoutGenerator():
                 break
 
         if not found:
-            remaining_budget = self.subgroups_log.getTotalRemainingBudget()
-            assert remaining_budget > 0, 'a layout is requested to be generated but there is still no remaining budget to create it'
             print('finished the last group but there is still remaining budget.')
             print('using the remaining budget to look for previous groups that have more gaps to close')
             right = self.subgroups_log.getRightmostLayout()
             left = self.subgroups_log.getLeftmostLayout()
+
+            if extra_budget > 0:
+                self.subgroups_log.addExtraBudget(left['layout'], extra_budget)
+            remaining_budget = self.subgroups_log.getTotalRemainingBudget()
+            assert remaining_budget > 0, 'a layout is requested to be generated but there is still no remaining budget to create it'
+
             self.state_log = StateLog(self.exp_dir,
                                       self.results_df,
-                                      right, left)
+                                      right['layout'], left['layout'])
             if self.state_log.empty():
-                self.initializeStateLog(left, right)
+                self.initializeStateLog(right, left)
             next_layout = self.state_log.getNextLayoutToIncrement(right['layout'])
             if next_layout == left['layout']:
                 print('Finished closing all gaps but there is still remaining budget that is not used')
@@ -552,7 +559,7 @@ class LayoutGenerator():
         if self.state_log.empty():
             # if the state was not created before then this layout should
             # have a full budget (its budget should still unused)
-            assert(left_layout['remaining_budget'] == left_layout['total_budget'])
+            #assert(left_layout['remaining_budget'] == left_layout['total_budget'])
             state_layouts = results_df.query(
                 'walk_cycles >= {left} and walk_cycles <= {right}'.format(
                     left=left_layout['walk_cycles'],
