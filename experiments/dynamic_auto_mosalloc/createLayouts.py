@@ -765,8 +765,10 @@ class LayoutGenerator():
         # is this the first layout to be generated for the current group
         if self.state_log.hasOnlyBaseLayouts():
             base_layout = self.state_log.getRightLayoutName()
-            base_layout = self.state_log.getNextLayoutToIncrement(base_layout)
-            desired_coverage = self.state_log.getPebsCoverage(base_layout) + INCREMENT
+            next_layout = self.state_log.getNextLayoutToIncrement(base_layout)
+            if self.state_log.getField('layout', next_layout, 'scan_base') != 'none':
+                base_layout = next_layout
+            desired_coverage = self.state_log.getPebsCoverage(next_layout) + INCREMENT
             how = 'increment'
         else: # this is not the first layout in the subgroup
             last_layout = self.state_log.getLastLayoutName()
@@ -800,9 +802,9 @@ class LayoutGenerator():
                 # the last layout seems to have next layout(s) with gap
                 # less than MAX_GAP%, then we should move to the last one of
                 # these layouts as our new base layout
-                    base_layout = next_layout
-                    base_layout_pebs = self.state_log.getPebsCoverage(base_layout)
-                    desired_coverage = base_layout_pebs + INCREMENT
+                    if self.state_log.getField('layout', next_layout, 'scan_base') != 'none':
+                        base_layout = next_layout
+                    desired_coverage = self.state_log.getPebsCoverage(next_layout) + INCREMENT
             else:
             # last layout was incremented by > MAX_GAP%
                 how = 'decrement'
