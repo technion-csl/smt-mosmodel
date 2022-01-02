@@ -517,7 +517,7 @@ class LayoutGenerator():
             left = self.subgroups_log.getLeftmostLayout()
 
             if extra_budget > 0:
-                selif.subgroups_log.addExtraBudget(left['layout'], 1)
+                self.subgroups_log.addExtraBudget(left['layout'], 1)
 
             self.state_log = StateLog(self.exp_dir,
                                       self.results_df,
@@ -682,7 +682,8 @@ class LayoutGenerator():
         df = self.pebs_df.query(f'PAGE_NUMBER in {pages} and PAGE_NUMBER not in {base_pages}')
         df = df.sort_values('TLB_COVERAGE', ascending=True)
 
-        assert layout_coverage > desired_coverage > base_layout_coverage
+        #assert layout_coverage > desired_coverage > base_layout_coverage
+        assert layout_coverage > desired_coverage
 
         print(f'[DEBUG]: start removing tail pages from {layout}, which its base is {base_layout}')
         print(f'[DEBUG]: {layout} coverage: {layout_coverage}')
@@ -702,7 +703,8 @@ class LayoutGenerator():
                 total_weight = updated_total_weight
             if max_coverage >= total_weight >= min_coverage:
                 break
-        assert len(removed_pages) > 0
+        if len(removed_pages) == 0:
+            return None, 0
         df = self.pebs_df.query(f'PAGE_NUMBER in {pages} and PAGE_NUMBER not in {removed_pages}')
         new_pages = df['PAGE_NUMBER'].to_list()
         new_pages.sort()
