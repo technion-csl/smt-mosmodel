@@ -204,8 +204,8 @@ class StateLog(Log):
         default_columns = [
             'layout',
             'scan_method', 'scan_direction', 'scan_value', 'scan_base',
-            'pebs_coverage', 'expected_real_coverage', 'real_coverage',
-            'walk_cycles', 'offset']
+            'pebs_coverage', 'expected_real_coverage', 'increment_base',
+            'real_coverage', 'walk_cycles', 'offset']
         self.right_layout = right_layout
         self.left_layout = left_layout
         state_name = right_layout + '_' + left_layout
@@ -224,7 +224,8 @@ class StateLog(Log):
     def addRecord(self,
                   layout,
                   scan_method, scan_direction, scan_value, scan_base,
-                  pebs_coverage, expected_real_coverage, pages, offset,
+                  pebs_coverage, expected_real_coverage, increment_base,
+                  pages, offset,
                   writeLog=True):
         base_pages = []
         if scan_base != 'none':
@@ -239,6 +240,7 @@ class StateLog(Log):
             'scan_base': scan_base,
             'pebs_coverage': pebs_coverage,
             'expected_real_coverage': expected_real_coverage,
+            'increment_base': increment_base,
             'real_coverage': -1,
             'walk_cycles': -1,
             'offset': offset
@@ -301,48 +303,34 @@ class StateLog(Log):
 
         return layout_coverage - base_coverage
 
-    def lastLayoutImprovedMaxGap(self):
-        """
-        Calculates if the last layout contributed to reducing the
-        maximal gap in the current group
-
-        Returns
-        -------
-        bool
-            Returns True if the last layout reduced the maximal gap
-            Returns False otherwise
-        """
-        including_df_diffs = self.df.sort_values('real_coverage', ascending=True)
-        including_max_diff = including_df_diffs['real_coverage'].diff().max()
-
-        excluding_df = self.df.iloc[0:len(self.df)-1]
-        excluding_df_diffs = excluding_df.sort_values('real_coverage', ascending=True)
-        excluding_max_diff = excluding_df_diffs['real_coverage'].diff().max()
-
-        return including_max_diff < excluding_max_diff
-
     def getGapBetweenLastRecordAndBase(self):
         #self.writeRealCoverage()
         last_layout = self.getLastRecord()
-        base_layout = last_layout['scan_base']
+        base_layout = last_layout['increment_base']
         return self.getGapFromBase(last_layout['layout'], base_layout)
 
     def getBaseLayout(self, layout_name):
         return self.getField('layout', layout_name, 'scan_base')
 
+    def getIncBaseLayout(self, layout_name):
+        return self.getField('layout', layout_name, 'increment_base')
+
     def getNextLayoutToIncrement(self, start_layout):
         start_layout_coverage = self.getRealCoverage(start_layout)
         df = self.df.query(f'real_coverage >= {start_layout_coverage}')
         df = df.sort_values('real_coverage', ascending=True)
+        base_layout = start_layout
         current_coverage = start_layout_coverage
         current_layout = start_layout
         for index, row in df.iterrows():
             if row['real_coverage'] <= (current_coverage + MAX_GAP):
                 current_coverage = row['real_coverage']
                 current_layout = row['layout']
+                if row['scan_base'] != 'none':
+                    base_layout = current_layout
             else:
                 break
-        return current_layout
+        return current_layout, base_layout
 
     def getMaxGapLayouts(self):
         diffs = self.df.sort_values('real_coverage', ascending=True)
@@ -545,13 +533,14 @@ class LayoutGenerator():
         if pages is None:
             desired_real_coverage = (self.state_log.getRealCoverage(right) + self.state_log.getRealCoverage(left)) / 2
             pages, pebs_coverage = self.removeTailPagesBasedOnRealCoverage(
-                    left, right, desired_real_coverage)
+                    left, None, desired_real_coverage)
             how = f'decrement ({left})'
         assert pages is not None
         LayoutGeneratorUtils.writeLayout(self.layout, pages, self.exp_dir)
         self.state_log.addRecord(self.layout,
                                  method, how, desired_coverage, base_layout,
-                                 pebs_coverage, expected_real_coverage, pages, 0)
+                                 pebs_coverage, expected_real_coverage,
+                                 base_layout, pages, 0)
         # decrease current group's budget by 1
         self.subgroups_log.decreaseRemainingBudget(
             self.state_log.getLeftLayoutName())
@@ -577,7 +566,8 @@ class LayoutGenerator():
                     self.pebs_df, pages)
                 self.state_log.addRecord(layout_name,
                                          'none', 'none', -1, 'none',
-                                         pebs_coverage, -1, pages, offset)
+                                         pebs_coverage, -1, 'none',
+                                         pages, offset)
             self.state_log.writeLog()
             self.state_log.writeRealCoverage()
 
@@ -592,19 +582,23 @@ class LayoutGenerator():
                 pages, pebs_coverage = self.addTailPagesBasedOnRealCoverage(base_layout, desired_real_coverage, tail=False)
         return pages, pebs_coverage
 
-    def addTailPagesBasedOnRealCoverage(self, base_layout, desired_real_coverage, tail=True):
+    def getPebsCoverageBasedOnRealCoverage(self, base_layout, desired_real_coverage):
         base_layout_real_coverage = self.state_log.getRealCoverage(base_layout)
         base_layout_pebs_coverage = self.state_log.getPebsCoverage(base_layout)
         base_layout_real_to_pebs_scale = base_layout_pebs_coverage / base_layout_real_coverage
         scaled_desired_coverage = base_layout_real_to_pebs_scale * desired_real_coverage
 
-        print(f'[DEBUG]: trying to add tail pages to layout: {base_layout}')
-        print(f'[DEBUG]: {base_layout} coverage: {base_layout_pebs_coverage}')
+        print('[DEBUG]: scaling real-coverage to pebs coverage')
+        print(f'[DEBUG]: {base_layout} pebs coverage: {base_layout_pebs_coverage}')
         print(f'[DEBUG]: desired real coverage: {desired_real_coverage}')
         print(f'[DEBUG]: scaled desired pebs coverage: {scaled_desired_coverage}')
 
-        assert scaled_desired_coverage > base_layout_pebs_coverage
+        return scaled_desired_coverage
 
+    def addTailPagesBasedOnRealCoverage(self, base_layout, desired_real_coverage, tail=True):
+        scaled_desired_coverage = self.getPebsCoverageBasedOnRealCoverage(base_layout, desired_real_coverage)
+        print(f'[DEBUG]: trying to add tail pages to layout: {base_layout}')
+        #assert scaled_desired_coverage > base_layout_pebs_coverage
         return self.addPagesBasedOnPebsCoverage(base_layout, scaled_desired_coverage, tail)
 
     def addPagesBasedOnPebsCoverage(self, base_layout, desired_coverage, tail=True):
@@ -618,6 +612,8 @@ class LayoutGenerator():
         base_pages, offset = LayoutGeneratorUtils.getLayoutHugepages(base_layout, self.exp_dir)
         df = self.pebs_df.query(f'PAGE_NUMBER not in {base_pages}')
         df = df.sort_values('TLB_COVERAGE', ascending=tail)
+
+        assert len(df) > 0
 
         added_pages = []
         total_weight = base_layout_pebs_coverage
@@ -635,6 +631,11 @@ class LayoutGenerator():
                 break
         if len(added_pages) == 0:
             print(f'WARNING: cannot find {pages_order} pages that can be added to acheive the desired coverage')
+            print('----------------------------------------------')
+            print(len(df))
+            print(len(base_pages))
+            print(len(self.pebs_df))
+            print('----------------------------------------------')
             return None, 0
         new_pages = base_pages + added_pages
         new_pages.sort()
@@ -660,10 +661,7 @@ class LayoutGenerator():
         return new_layout_pages, actual_pebs_coverage
 
     def removeTailPagesBasedOnRealCoverage(self, layout, base_layout, desired_real_coverage):
-        layout_real_coverage = self.state_log.getRealCoverage(layout)
-        layout_pebs_coverage = self.state_log.getPebsCoverage(layout)
-        layout_real_to_pebs_scale = layout_pebs_coverage / layout_real_coverage
-        scaled_desired_coverage = layout_real_to_pebs_scale * desired_real_coverage
+        scaled_desired_coverage = self.getPebsCoverageBasedOnRealCoverage(layout, desired_real_coverage)
 
         print(f'[DEBUG]: desired real coverage: {desired_real_coverage}')
         print(f'[DEBUG]: scaled desired pebs coverage: {scaled_desired_coverage}')
@@ -674,20 +672,23 @@ class LayoutGenerator():
     def removeTailPagesBasedOnPebsCoverage(self, layout, base_layout, desired_coverage):
         pages, offset = LayoutGeneratorUtils.getLayoutHugepages(
             layout, self.exp_dir)
-        base_pages, offset = LayoutGeneratorUtils.getLayoutHugepages(
-            base_layout, self.exp_dir)
         layout_coverage = self.pebs_df.query(f'PAGE_NUMBER in {pages}')['TLB_COVERAGE'].sum()
-        base_layout_coverage = self.pebs_df.query(f'PAGE_NUMBER in {base_pages}')['TLB_COVERAGE'].sum()
+
+        if base_layout is not None:
+            base_pages, offset = LayoutGeneratorUtils.getLayoutHugepages(
+                base_layout, self.exp_dir)
+            base_layout_coverage = self.pebs_df.query(f'PAGE_NUMBER in {base_pages}')['TLB_COVERAGE'].sum()
+            print(f'[DEBUG]: {base_layout} coverage: {base_layout_coverage}')
+        else:
+            base_pages = []
 
         df = self.pebs_df.query(f'PAGE_NUMBER in {pages} and PAGE_NUMBER not in {base_pages}')
         df = df.sort_values('TLB_COVERAGE', ascending=True)
 
-        #assert layout_coverage > desired_coverage > base_layout_coverage
         assert layout_coverage > desired_coverage
 
-        print(f'[DEBUG]: start removing tail pages from {layout}, which its base is {base_layout}')
+        print(f'[DEBUG]: start removing tail pages from {layout}')
         print(f'[DEBUG]: {layout} coverage: {layout_coverage}')
-        print(f'[DEBUG]: {base_layout} coverage: {base_layout_coverage}')
 
         removed_pages = []
         total_weight = layout_coverage
@@ -759,37 +760,48 @@ class LayoutGenerator():
         print('----------------------------------------------')
 
         # initialize required values with None
-        base_layout = desired_coverage = pages = pebs_coverage = how = expected_real_coverage = None
+        base_layout = desired_coverage = pages = pebs_coverage = how = expected_real_coverage = increment_base = None
         method = 'right-tail'
 
         # is this the first layout to be generated for the current group
         if self.state_log.hasOnlyBaseLayouts():
-            base_layout = self.state_log.getRightLayoutName()
-            next_layout = self.state_log.getNextLayoutToIncrement(base_layout)
-            if self.state_log.getField('layout', next_layout, 'scan_base') != 'none':
-                base_layout = next_layout
-            desired_coverage = self.state_log.getPebsCoverage(next_layout) + INCREMENT
+            increment_base = base_layout = self.state_log.getRightLayoutName()
+            desired_coverage = self.state_log.getPebsCoverage(base_layout) + INCREMENT
+            next_layout, base_layout = self.state_log.getNextLayoutToIncrement(base_layout)
+            # next_layout could be different than the returned base_layout in case that
+            # the next_layout is from a previous run of some previous subgroup, in this
+            # case we will use it to calculate the next desired-coverage but will not
+            # use it as our base_layout because we do not want to use its pages since
+            # it was created by a different subgroup
+            if next_layout != base_layout:
+                increment_base = next_layout
+                desired_coverage = None # will be updated below
             how = 'increment'
         else: # this is not the first layout in the subgroup
             last_layout = self.state_log.getLastLayoutName()
+            last_layout_base = self.state_log.getBaseLayout(last_layout)
+            last_layout_inc_base = self.state_log.getIncBaseLayout(last_layout)
             last_layout_pebs = self.state_log.getPebsCoverage(last_layout)
+
+            base_layout = last_layout_base
+            increment_base = last_layout_inc_base
+
             last_increment = self.state_log.getGapBetweenLastRecordAndBase()
-            print(f'[DEBUG]: gap (of the real coverage) for the last layout: {last_increment}')
+            print(f'[DEBUG]: gap between {last_layout} real-coverage and its increment-base real-coverage is: {last_increment}')
             if last_increment <= 0:
                 print(f'[WARNING]: {last_layout} got a lower real-coverage than its base.')
-                last_layout_base = self.state_log.getBaseLayout(last_layout)
                 base_layout = last_layout_base
-                desired_coverage = self.state_log.getPebsCoverage(last_layout) + MAX_GAP
+                increment_base = last_layout_inc_base
+                desired_coverage = last_layout_pebs + MAX_GAP
                 how = 'increment'
             # last laout was incremented by < MAX_GAP%
             # there are two cases here: less than LOW_GAP% or btween LOW_GAP% and MAX_GAP%
             elif last_increment <= MAX_GAP:
-                base_layout = last_layout
                 how = 'increment'
                 # find next base layout by start looking from the last layout
                 # until finding the first layout with a gap > MAX_GAP
-                next_layout = self.state_log.getNextLayoutToIncrement(last_layout)
-                if next_layout == last_layout:
+                next_layout, base_layout = self.state_log.getNextLayoutToIncrement(last_layout_base)
+                if next_layout == last_layout_inc_base:
                     if last_increment < LOW_GAP:
                         #scale = self.state_log.df['pebs_coverage'].mean() / self.state_log.df['real_coverage'].mean()
                         scale = INCREMENT / last_increment
@@ -802,14 +814,15 @@ class LayoutGenerator():
                 # the last layout seems to have next layout(s) with gap
                 # less than MAX_GAP%, then we should move to the last one of
                 # these layouts as our new base layout
-                    if self.state_log.getField('layout', next_layout, 'scan_base') != 'none':
-                        base_layout = next_layout
-                    desired_coverage = self.state_log.getPebsCoverage(next_layout) + INCREMENT
+                    increment_base = next_layout
+                    if next_layout != base_layout:
+                        desired_coverage = None # will be updated below
+                    else:
+                        desired_coverage = self.state_log.getPebsCoverage(base_layout) + INCREMENT
             else:
             # last layout was incremented by > MAX_GAP%
                 how = 'decrement'
                 last_layout_method = self.state_log.getField('layout', last_layout, 'scan_method')
-                last_layout_base = self.state_log.getBaseLayout(last_layout)
                 base_layout = last_layout_base
                 base_layout_pebs = self.state_log.getPebsCoverage(base_layout)
                 if last_layout_method == 'right-tail':
@@ -835,9 +848,12 @@ class LayoutGenerator():
                             leftmost, base_layout, desired_real_coverage)
                     method = 'left-tail'
                     how = f'decrement ({leftmost})'
-                desired_coverage = f'{pebs_coverage} (auto)'
+                desired_coverage = f'{pebs_coverage}'
 
-        expected_real_coverage = self.state_log.getRealCoverage(base_layout) + INCREMENT
+        if expected_real_coverage is None:
+            expected_real_coverage = self.state_log.getRealCoverage(increment_base) + INCREMENT
+        if desired_coverage is None:
+            desired_coverage = self.getPebsCoverageBasedOnRealCoverage(base_layout, expected_real_coverage)
 
         if how == 'increment' and pages is None:
             pages, pebs_coverage = self.addPages(base_layout, desired_coverage)
@@ -847,7 +863,7 @@ class LayoutGenerator():
             desired_real_coverage = self.state_log.getRealCoverage(base_layout) + INCREMENT
             leftmost = self.state_log.getLeftLayoutName()
             pages, pebs_coverage = self.removeTailPagesBasedOnRealCoverage(
-                    leftmost, base_layout, desired_real_coverage)
+                    leftmost, None, desired_real_coverage)
             method = 'left-tail'
             how = f'decrement ({leftmost})'
 
@@ -856,9 +872,11 @@ class LayoutGenerator():
         assert pages is not None
         assert pebs_coverage is not None
         assert how is not None
+        assert increment_base is not None
         self.state_log.addRecord(self.layout,
                                  method, how, desired_coverage, base_layout,
-                                 pebs_coverage, expected_real_coverage, pages, 0)
+                                 pebs_coverage, expected_real_coverage,
+                                 increment_base, pages, 0)
         print('----------------------------------------------')
         print(self.state_log.df)
         print('==============================================')
