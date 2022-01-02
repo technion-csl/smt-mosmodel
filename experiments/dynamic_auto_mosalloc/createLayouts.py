@@ -380,6 +380,8 @@ class LayoutGenerator():
         # desired weights for each group layout
         desired_weights = [56, 28, 14]
         df = self.pebs_df.sort_values('TLB_COVERAGE', ascending=False)
+        return self.fillBuckets(df, desired_weights, False)
+        '''
         g1 = self.fillBuckets(df, desired_weights, True)
         g1_pages = g1[0] + g1[1] + g1[2]
 
@@ -390,6 +392,7 @@ class LayoutGenerator():
         group = [g1[i]+g2[i] for i in range(len(g1))]
 
         return group
+        '''
 
     def fillBuckets(self, df, buckets, fill_only_one_slot=False):
         group = [[], [], []]
@@ -542,7 +545,7 @@ class LayoutGenerator():
         if pages is None:
             desired_real_coverage = (self.state_log.getRealCoverage(right) + self.state_log.getRealCoverage(left)) / 2
             pages, pebs_coverage = self.removeTailPagesBasedOnRealCoverage(
-                    left, desired_real_coverage)
+                    left, right, desired_real_coverage)
             how = f'decrement ({left})'
         assert pages is not None
         LayoutGeneratorUtils.writeLayout(self.layout, pages, self.exp_dir)
@@ -656,32 +659,37 @@ class LayoutGenerator():
             df, desired_coverage, base_layout_pages)
         return new_layout_pages, actual_pebs_coverage
 
-    def removeTailPagesBasedOnRealCoverage(self, base_layout, desired_real_coverage):
-        base_layout_real_coverage = self.state_log.getRealCoverage(base_layout)
-        base_layout_pebs_coverage = self.state_log.getPebsCoverage(base_layout)
-        base_layout_real_to_pebs_scale = base_layout_pebs_coverage / base_layout_real_coverage
-        scaled_desired_coverage = base_layout_real_to_pebs_scale * desired_real_coverage
+    def removeTailPagesBasedOnRealCoverage(self, layout, base_layout, desired_real_coverage):
+        layout_real_coverage = self.state_log.getRealCoverage(layout)
+        layout_pebs_coverage = self.state_log.getPebsCoverage(layout)
+        layout_real_to_pebs_scale = layout_pebs_coverage / layout_real_coverage
+        scaled_desired_coverage = layout_real_to_pebs_scale * desired_real_coverage
 
         print(f'[DEBUG]: desired real coverage: {desired_real_coverage}')
         print(f'[DEBUG]: scaled desired pebs coverage: {scaled_desired_coverage}')
 
         return self.removeTailPagesBasedOnPebsCoverage(
-            base_layout, scaled_desired_coverage)
+            layout, base_layout, scaled_desired_coverage)
 
-    def removeTailPagesBasedOnPebsCoverage(self, base_layout, desired_coverage):
+    def removeTailPagesBasedOnPebsCoverage(self, layout, base_layout, desired_coverage):
         pages, offset = LayoutGeneratorUtils.getLayoutHugepages(
+            layout, self.exp_dir)
+        base_pages, offset = LayoutGeneratorUtils.getLayoutHugepages(
             base_layout, self.exp_dir)
-        df = self.pebs_df.query(f'PAGE_NUMBER in {pages}')
-        df = df.sort_values('TLB_COVERAGE', ascending=False)
-        base_layout_coverage = df['TLB_COVERAGE'].sum()
+        layout_coverage = self.pebs_df.query(f'PAGE_NUMBER in {pages}')['TLB_COVERAGE'].sum()
+        base_layout_coverage = self.pebs_df.query(f'PAGE_NUMBER in {base_pages}')['TLB_COVERAGE'].sum()
 
-        assert desired_coverage < base_layout_coverage
+        df = self.pebs_df.query(f'PAGE_NUMBER in {pages} and PAGE_NUMBER not in {base_pages}')
+        df = df.sort_values('TLB_COVERAGE', ascending=True)
 
-        print(f'[DEBUG]: subgroup layout to remove from it: {base_layout}')
+        assert layout_coverage > desired_coverage > base_layout_coverage
+
+        print(f'[DEBUG]: start removing tail pages from {layout}, which its base is {base_layout}')
+        print(f'[DEBUG]: {layout} coverage: {layout_coverage}')
         print(f'[DEBUG]: {base_layout} coverage: {base_layout_coverage}')
 
         removed_pages = []
-        total_weight = base_layout_coverage
+        total_weight = layout_coverage
         epsilon = 0.2
         max_coverage = desired_coverage
         min_coverage = desired_coverage - epsilon
@@ -695,7 +703,7 @@ class LayoutGenerator():
             if max_coverage >= total_weight >= min_coverage:
                 break
         assert len(removed_pages) > 0
-        df = df.query('PAGE_NUMBER not in {pages}'.format(pages=removed_pages))
+        df = self.pebs_df.query(f'PAGE_NUMBER in {pages} and PAGE_NUMBER not in {removed_pages}')
         new_pages = df['PAGE_NUMBER'].to_list()
         new_pages.sort()
         new_pebs_coverage = df['TLB_COVERAGE'].sum()
@@ -764,7 +772,7 @@ class LayoutGenerator():
             last_increment = self.state_log.getGapBetweenLastRecordAndBase()
             print(f'[DEBUG]: gap (of the real coverage) for the last layout: {last_increment}')
             if last_increment <= 0:
-                print(f'[WARNING]: {last_layout} got a lower real-coverage than its base eventhough it has a higher pebs-coverage.')
+                print(f'[WARNING]: {last_layout} got a lower real-coverage than its base.')
                 last_layout_base = self.state_log.getBaseLayout(last_layout)
                 base_layout = last_layout_base
                 desired_coverage = self.state_log.getPebsCoverage(last_layout) + MAX_GAP
@@ -801,20 +809,26 @@ class LayoutGenerator():
                 base_layout = last_layout_base
                 base_layout_pebs = self.state_log.getPebsCoverage(base_layout)
                 if last_layout_method == 'right-tail':
+                    last_layout_real_coverage = self.state_log.getRealCoverage(last_layout)
+                    base_layout_real_coverage = self.state_log.getRealCoverage(base_layout)
+                    pebs_diff = last_layout_pebs - base_layout_pebs
+                    real_diff = last_layout_real_coverage - base_layout_real_coverage
+                    pebs_to_real_coverage_ratio = pebs_diff / real_diff
+                    expected_real_diff = self.state_log.getExpectedRealCoverage(last_layout) - self.state_log.getRealCoverage(base_layout)
+                    desired_coverage = base_layout_pebs + (expected_real_diff * pebs_to_real_coverage_ratio)
+
+                    #desired_coverage = pebs_to_real_coverage_ratio * self.state_log.getExpectedRealCoverage(last_layout)
                     print(f'[DEBUG]: starting to remove tail pages from: {last_layout}')
                     print(f'[DEBUG]: trying to reduce coverage from: {last_layout_pebs} to: {desired_coverage}')
-                    last_layout_real_coverage = self.state_log.getRealCoverage(last_layout)
-                    pebs_to_real_coverage_ratio = last_layout_pebs / last_layout_real_coverage
-                    desired_coverage = pebs_to_real_coverage_ratio * self.state_log.getExpectedRealCoverage(last_layout)
                     pages, pebs_coverage = self.removeTailPagesBasedOnPebsCoverage(
-                            last_layout, desired_coverage)
+                            last_layout, base_layout, desired_coverage)
                     method = 'right-tail'
                     how = f'decrement ({last_layout})'
                 if last_layout_method == 'left-tail' or (last_layout_method == 'right-tail' and pages is None):
                     desired_real_coverage = self.state_log.getRealCoverage(base_layout) + INCREMENT
                     leftmost = last_layout
                     pages, pebs_coverage = self.removeTailPagesBasedOnRealCoverage(
-                            leftmost, desired_real_coverage)
+                            leftmost, base_layout, desired_real_coverage)
                     method = 'left-tail'
                     how = f'decrement ({leftmost})'
                 desired_coverage = f'{pebs_coverage} (auto)'
@@ -829,7 +843,7 @@ class LayoutGenerator():
             desired_real_coverage = self.state_log.getRealCoverage(base_layout) + INCREMENT
             leftmost = self.state_log.getLeftLayoutName()
             pages, pebs_coverage = self.removeTailPagesBasedOnRealCoverage(
-                    leftmost, desired_real_coverage)
+                    leftmost, base_layout, desired_real_coverage)
             method = 'left-tail'
             how = f'decrement ({leftmost})'
 
