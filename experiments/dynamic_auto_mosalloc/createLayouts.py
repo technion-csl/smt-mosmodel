@@ -810,7 +810,7 @@ class LayoutGenerator():
             increment_base = last_layout_inc_base
 
             next_layout, base_layout = self.state_log.getNextLayoutToIncrement(last_layout_base)
-            if next_layout != last_layout_inc_base:
+            if next_layout != last_layout_inc_base and next_layout != last_layout:
                 print(f'[DEBUG]: moving to new base to increment: {next_layout}')
                 increment_base = next_layout
                 how = 'increment'
@@ -827,6 +827,7 @@ class LayoutGenerator():
             # last laout was incremented by < MAX_GAP%
             # there are two cases here: less than LOW_GAP% or btween LOW_GAP% and MAX_GAP%
             elif last_increment <= MAX_GAP:
+                increment_base = next_layout
                 how = 'increment'
                 if last_increment < LOW_GAP:
                     #scale = self.state_log.df['pebs_coverage'].mean() / self.state_log.df['real_coverage'].mean()
@@ -838,6 +839,7 @@ class LayoutGenerator():
                 desired_coverage = last_layout_pebs + (INCREMENT * scale)
             else:
             # last layout was incremented by > MAX_GAP%
+                increment_base = last_layout_inc_base
                 how = 'decrement'
                 last_layout_method = self.state_log.getField('layout', last_layout, 'scan_method')
                 base_layout = last_layout_base
