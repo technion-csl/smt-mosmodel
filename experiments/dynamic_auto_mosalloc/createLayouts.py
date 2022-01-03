@@ -317,6 +317,7 @@ class StateLog(Log):
 
     def getNextLayoutToIncrement(self, start_layout):
         start_layout_coverage = self.getRealCoverage(start_layout)
+        max_coverage = self.getRealCoverage(self.getLeftLayoutName())
         df = self.df.query(f'real_coverage >= {start_layout_coverage}')
         df = df.sort_values('real_coverage', ascending=True)
         base_layout = start_layout
@@ -324,10 +325,12 @@ class StateLog(Log):
         current_layout = start_layout
         for index, row in df.iterrows():
             if row['real_coverage'] <= (current_coverage + MAX_GAP):
-                current_coverage = row['real_coverage']
                 current_layout = row['layout']
                 if row['scan_base'] != 'none':
                     base_layout = current_layout
+                current_coverage = row['real_coverage']
+                if current_coverage >= max_coverage:
+                    return None, None
             else:
                 break
         return current_layout, base_layout
@@ -439,7 +442,7 @@ class LayoutGenerator():
         self.subgroups_log.addRecord(layout_name, 100)
         self.subgroups_log.writeLog()
 
-    def updateLogs(self):
+    def updateSubgroupsLog(self):
         # calculate the real-coverage for each group and update the log
         # if the subgroups-log was not created yet then create it based on the
         # current results
@@ -457,7 +460,7 @@ class LayoutGenerator():
         # calculate the budget that will be given for each group
         self.subgroups_log.calculateBudget()
 
-        extra_budget = 0
+    def findNextSubgroup(self):
         found = False
         # find the first group that still has a remaining budget
         for i in range(len(self.subgroups_log.df)-1):
@@ -477,11 +480,11 @@ class LayoutGenerator():
                 self.state_log.writeRealCoverage()
             # if we already closed all gaps in this group then move the
             # left budget to the next group
-            next_layout = self.state_log.getNextLayoutToIncrement(
+            next_layout, base_layout = self.state_log.getNextLayoutToIncrement(
                 right_layout['layout'])
-            if next_layout == left_layout['layout']:
+            if next_layout is None and base_layout is None:
                 print('===========================================================')
-                print('[DEBUG] closed all gaps before consuming all available budget, moving the remaining budget to the next group')
+                print(f'[DEBUG] closed all gaps for subgroup: {right_layout["layout"]} - {left_layout["layout"]}')
                 print('===========================================================')
                 self.subgroups_log.zeroBudget(left_layout['layout'])
                 continue
@@ -489,6 +492,9 @@ class LayoutGenerator():
             # if already consumed the total budget then move to next group
             remaining_budget = left_layout['remaining_budget']
             if (remaining_budget + extra_budget) == 0:
+                print('===========================================================')
+                print(f'[DEBUG] consumed all budget (but still gaps to close) for subgroup: {right_layout["layout"]} - {left_layout["layout"]}')
+                print('===========================================================')
                 continue
             # if there is an extra budget that remained---and not used---from
             # previous group, then add it to current group
@@ -496,7 +502,22 @@ class LayoutGenerator():
                 self.subgroups_log.addExtraBudget(left_layout['layout'], extra_budget)
             found = True
             break
+        print('===========================================================')
+        if found:
+            print(f'[DEBUG] star closing gaps for subgroup: {right_layout["layout"]} - {left_layout["layout"]}')
+        else:
+            print('[DEBUG] could not find subgroup to close its gaps')
+        print('===========================================================')
 
+        return found
+
+    def updateLogs(self):
+        self.updateSubgroupsLog()
+        found = self.findNextSubgroup()
+        if not found:
+            # second trial to make sure that passed remaining budget
+            # can be reused again for some previous subgroup
+            found = self.findNextSubgroup()
         if not found:
             extra_budget = MAX_TRIALS - (self.subgroups_log.getTotalBudget() + 9)
             print(f'finished the last group but there is still ({extra_budget}) remaining budget.')
@@ -512,12 +533,10 @@ class LayoutGenerator():
                                       right['layout'], left['layout'])
             if self.state_log.empty():
                 self.initializeStateLog(right, left)
-            next_layout = self.state_log.getNextLayoutToIncrement(right['layout'])
-            if next_layout == left['layout']:
-                print('Finished closing all gaps but there is still remaining budget that is not used')
-                print('trying to improve max gap furthermore')
-                self.improveMaxGapFurthermore()
-                sys.exit(0)
+            self.improveMaxGapFurthermore()
+            return False
+        # return True, which means that there is some subgroup to be improved (close its gaps)
+        return True
 
     def improveMaxGapFurthermore(self):
         print(self.state_log.df)
@@ -572,14 +591,19 @@ class LayoutGenerator():
             self.state_log.writeRealCoverage()
 
     def addPages(self, base_layout, desired_coverage):
+        print('====== add tail pages based on pebs=====')
         pages, pebs_coverage = self.addPagesBasedOnPebsCoverage(base_layout, desired_coverage, tail=True)
         if pages is None:
-            pages, pebs_coverage = self.addPagesBasedOnPebsCoverage(base_layout, desired_coverage, tail=False)
-        if pages is None:
+            print('====== add tail pages based on real=====')
             desired_real_coverage = self.state_log.getRealCoverage(base_layout) + INCREMENT
             pages, pebs_coverage = self.addTailPagesBasedOnRealCoverage(base_layout, desired_real_coverage, tail=True)
-            if pages is None:
-                pages, pebs_coverage = self.addTailPagesBasedOnRealCoverage(base_layout, desired_real_coverage, tail=False)
+        if pages is None:
+            print('====== add head pages based on pebs=====')
+            pages, pebs_coverage = self.addPagesBasedOnPebsCoverage(base_layout, desired_coverage, tail=False)
+        if pages is None:
+            print('====== add head pages based on real=====')
+            pages, pebs_coverage = self.addTailPagesBasedOnRealCoverage(base_layout, desired_real_coverage, tail=False)
+        print('===== DONE =====')
         return pages, pebs_coverage
 
     def getPebsCoverageBasedOnRealCoverage(self, base_layout, desired_real_coverage):
@@ -630,12 +654,6 @@ class LayoutGenerator():
             if max_coverage >= total_weight >= min_coverage:
                 break
         if len(added_pages) == 0:
-            print(f'WARNING: cannot find {pages_order} pages that can be added to acheive the desired coverage')
-            print('----------------------------------------------')
-            print(len(df))
-            print(len(base_pages))
-            print(len(self.pebs_df))
-            print('----------------------------------------------')
             return None, 0
         new_pages = base_pages + added_pages
         new_pages.sort()
@@ -681,6 +699,7 @@ class LayoutGenerator():
             print(f'[DEBUG]: {base_layout} coverage: {base_layout_coverage}')
         else:
             base_pages = []
+            base_layout_coverage =  None
 
         df = self.pebs_df.query(f'PAGE_NUMBER in {pages} and PAGE_NUMBER not in {base_pages}')
         df = df.sort_values('TLB_COVERAGE', ascending=True)
@@ -754,7 +773,8 @@ class LayoutGenerator():
     def createNextLayoutDynamically(self):
         assert self.results_df is not None,'results mean file does not exist'
         # fill or update SubgroupsLog and StateLog
-        self.updateLogs()
+        if not self.updateLogs():
+            return
         print('==============================================')
         print(self.state_log.df)
         print('----------------------------------------------')
@@ -783,12 +803,22 @@ class LayoutGenerator():
             last_layout_inc_base = self.state_log.getIncBaseLayout(last_layout)
             last_layout_pebs = self.state_log.getPebsCoverage(last_layout)
 
+            last_increment = self.state_log.getGapBetweenLastRecordAndBase()
+            print(f'[DEBUG]: gap between {last_layout} real-coverage and its increment-base real-coverage is: {last_increment}')
+
             base_layout = last_layout_base
             increment_base = last_layout_inc_base
 
-            last_increment = self.state_log.getGapBetweenLastRecordAndBase()
-            print(f'[DEBUG]: gap between {last_layout} real-coverage and its increment-base real-coverage is: {last_increment}')
-            if last_increment <= 0:
+            next_layout, base_layout = self.state_log.getNextLayoutToIncrement(last_layout_base)
+            if next_layout != last_layout_inc_base:
+                print(f'[DEBUG]: moving to new base to increment: {next_layout}')
+                increment_base = next_layout
+                how = 'increment'
+                if next_layout != base_layout:
+                    desired_coverage = None # will be updated below
+                else:
+                    desired_coverage = self.state_log.getPebsCoverage(base_layout) + INCREMENT
+            elif last_increment <= 0:
                 print(f'[WARNING]: {last_layout} got a lower real-coverage than its base.')
                 base_layout = last_layout_base
                 increment_base = last_layout_inc_base
@@ -798,27 +828,14 @@ class LayoutGenerator():
             # there are two cases here: less than LOW_GAP% or btween LOW_GAP% and MAX_GAP%
             elif last_increment <= MAX_GAP:
                 how = 'increment'
-                # find next base layout by start looking from the last layout
-                # until finding the first layout with a gap > MAX_GAP
-                next_layout, base_layout = self.state_log.getNextLayoutToIncrement(last_layout_base)
-                if next_layout == last_layout_inc_base:
-                    if last_increment < LOW_GAP:
-                        #scale = self.state_log.df['pebs_coverage'].mean() / self.state_log.df['real_coverage'].mean()
-                        scale = INCREMENT / last_increment
-                        scale = min(scale, 2)
-                        print(f'[DEBUG]: last layout closed a small gap (less than {LOW_GAP}%) --> scaling increment value by: {scale}')
-                    else:
-                        scale = 1
-                    desired_coverage = last_layout_pebs + (INCREMENT * scale)
+                if last_increment < LOW_GAP:
+                    #scale = self.state_log.df['pebs_coverage'].mean() / self.state_log.df['real_coverage'].mean()
+                    scale = INCREMENT / last_increment
+                    scale = min(scale, 2)
+                    print(f'[DEBUG]: last layout closed a small gap (less than {LOW_GAP}%) --> scaling increment value by: {scale}')
                 else:
-                # the last layout seems to have next layout(s) with gap
-                # less than MAX_GAP%, then we should move to the last one of
-                # these layouts as our new base layout
-                    increment_base = next_layout
-                    if next_layout != base_layout:
-                        desired_coverage = None # will be updated below
-                    else:
-                        desired_coverage = self.state_log.getPebsCoverage(base_layout) + INCREMENT
+                    scale = 1
+                desired_coverage = last_layout_pebs + (INCREMENT * scale)
             else:
             # last layout was incremented by > MAX_GAP%
                 how = 'decrement'
@@ -837,10 +854,18 @@ class LayoutGenerator():
                     #desired_coverage = pebs_to_real_coverage_ratio * self.state_log.getExpectedRealCoverage(last_layout)
                     print(f'[DEBUG]: starting to remove tail pages from: {last_layout}')
                     print(f'[DEBUG]: trying to reduce coverage from: {last_layout_pebs} to: {desired_coverage}')
-                    pages, pebs_coverage = self.removeTailPagesBasedOnPebsCoverage(
-                            last_layout, base_layout, desired_coverage)
                     method = 'right-tail'
                     how = f'decrement ({last_layout})'
+                    pages, pebs_coverage = self.removeTailPagesBasedOnPebsCoverage(
+                            last_layout, base_layout, desired_coverage)
+                    if pages is None:
+                        print('[DEBUG]: failed to get to the desired coverage by removing tail pages')
+                        print('[DEBUG]: ** trying to add pages to the base to get to the required coverage')
+                        pages, pebs_coverage = self.addPages(base_layout, desired_coverage)
+                        method = 'right-tail'
+                        how = 'increment'
+                    else:
+                        print(f'[DEBUG]: reduced {last_layout} coverage from: {last_layout_pebs} to: {desired_coverage}')
                 if last_layout_method == 'left-tail' or (last_layout_method == 'right-tail' and pages is None):
                     desired_real_coverage = self.state_log.getRealCoverage(base_layout) + INCREMENT
                     leftmost = last_layout
