@@ -842,7 +842,7 @@ class LayoutGenerator():
                     #scale = self.state_log.df['pebs_coverage'].mean() / self.state_log.df['real_coverage'].mean()
                     scale = INCREMENT / last_increment
                     scale = min(scale, 2)
-                    factor = last_layout_factor + scale
+                    factor = (last_layout_factor - 1) + scale
                     print(f'[DEBUG]: last layout closed a small gap (less than {LOW_GAP}%) --> scaling increment value by: {scale}')
                 else:
                     factor = last_layout_factor
@@ -888,7 +888,7 @@ class LayoutGenerator():
                         pages, pebs_coverage = self.removeTailPagesBasedOnPebsCoverage(
                                 last_layout, base_layout, desired_coverage)
                 if last_layout_method == 'left-tail':
-                    factor = last_layout_factor + 1
+                    factor = (last_layout_factor - 1) + last_increment / INCREMENT
                     desired_coverage = last_layout_pebs - (INCREMENT * factor)
                     pages, pebs_coverage = self.removeTailPagesBasedOnPebsCoverage(
                             last_layout, None, desired_coverage)
