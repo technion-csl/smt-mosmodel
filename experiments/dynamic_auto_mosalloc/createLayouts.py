@@ -827,10 +827,10 @@ class LayoutGenerator():
                 else:
                     desired_coverage = self.state_log.getPebsCoverage(base_layout) + (INCREMENT * factor)
             elif last_increment <= 0:
-                print(f'[WARNING]: {last_layout} got a lower real-coverage than its base.')
+                print(f'[DEBUG]: {last_layout} got a lower real-coverage than expected.')
                 base_layout = last_layout_base
                 increment_base = last_layout_inc_base
-                factor = last_layout_factor + 2
+                factor = (-last_increment) / INCREMENT + 1
                 desired_coverage = last_layout_pebs + (INCREMENT * factor)
                 how = 'increment'
             # last laout was incremented by < MAX_GAP%
@@ -855,34 +855,38 @@ class LayoutGenerator():
                 last_layout_method = self.state_log.getField('layout', last_layout, 'scan_method')                
                 base_layout = last_layout_base
                 base_layout_pebs = self.state_log.getPebsCoverage(base_layout)
-                if last_layout_method == 'right-tail':
-                    increment_value = self.state_log.getField('layout', last_layout, 'scan_value')
+                if last_layout_direction == 'increment':
+                    #increment_value = self.state_log.getField('layout', last_layout, 'scan_value')
                     factor = INCREMENT / last_increment
                     desired_coverage = base_layout_pebs + (INCREMENT * factor)
-                    '''
-                    last_layout_real_coverage = self.state_log.getRealCoverage(last_layout)
-                    base_layout_real_coverage = self.state_log.getRealCoverage(base_layout)
-                    pebs_diff = last_layout_pebs - base_layout_pebs
-                    real_diff = last_layout_real_coverage - base_layout_real_coverage
-                    pebs_to_real_coverage_ratio = pebs_diff / real_diff
-                    expected_real_diff = self.state_log.getExpectedRealCoverage(last_layout) - self.state_log.getRealCoverage(base_layout)
-                    desired_coverage = base_layout_pebs + (expected_real_diff * pebs_to_real_coverage_ratio)
-                    '''
-                    #desired_coverage = pebs_to_real_coverage_ratio * self.state_log.getExpectedRealCoverage(last_layout)
-                    print(f'[DEBUG]: starting to remove tail pages from: {last_layout}')
-                    print(f'[DEBUG]: trying to reduce coverage from: {last_layout_pebs} to: {desired_coverage}')
+                    pages, pebs_coverage = self.addPages(base_layout, desired_coverage)
                     method = 'right-tail'
-                    how = f'decrement ({last_layout})'
-                    pages, pebs_coverage = self.removeTailPagesBasedOnPebsCoverage(
-                            last_layout, base_layout, desired_coverage)
+                    how = 'increment'
+                if last_layout_method == 'right-tail':
+                    # try first to add less tail pages to base layout
+                    #increment_value = self.state_log.getField('layout', last_layout, 'scan_value')
+                    factor = INCREMENT / last_increment
+                    desired_coverage = base_layout_pebs + (INCREMENT * factor)
+                    pages, pebs_coverage = self.addPages(base_layout, desired_coverage)
+                    method = 'right-tail'
+                    how = 'increment'
+                    # if add tail pages does not work then try to remove tail
                     if pages is None:
-                        print('[DEBUG]: failed to get to the desired coverage by removing tail pages')
-                        print('[DEBUG]: ** trying to add pages to the base to get to the required coverage')
-                        pages, pebs_coverage = self.addPages(base_layout, desired_coverage)
+                        last_layout_real_coverage = self.state_log.getRealCoverage(last_layout)
+                        base_layout_real_coverage = self.state_log.getRealCoverage(base_layout)
+                        pebs_diff = last_layout_pebs - base_layout_pebs
+                        real_diff = last_layout_real_coverage - base_layout_real_coverage
+                        pebs_to_real_coverage_ratio = pebs_diff / real_diff
+                        expected_real_diff = self.state_log.getExpectedRealCoverage(last_layout) - self.state_log.getRealCoverage(base_layout)
+                        desired_coverage = base_layout_pebs + (expected_real_diff * pebs_to_real_coverage_ratio)
+                        #desired_coverage = pebs_to_real_coverage_ratio * self.state_log.getExpectedRealCoverage(last_layout)
+                        print(f'[DEBUG]: starting to remove tail pages from: {last_layout}')
+                        print(f'[DEBUG]: trying to reduce coverage from: {last_layout_pebs} to: {desired_coverage}')
+                        factor = (last_layout_pebs - desired_coverage) / last_layout_pebs
                         method = 'right-tail'
-                        how = 'increment'
-                    else:
-                        print(f'[DEBUG]: reduced {last_layout} coverage from: {last_layout_pebs} to: {desired_coverage}')
+                        how = f'decrement ({last_layout})'
+                        pages, pebs_coverage = self.removeTailPagesBasedOnPebsCoverage(
+                                last_layout, base_layout, desired_coverage)
                 if last_layout_method == 'left-tail':
                     factor = last_layout_factor + 1
                     desired_coverage = last_layout_pebs - (INCREMENT * factor)
