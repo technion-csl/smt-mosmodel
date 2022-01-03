@@ -831,6 +831,8 @@ class LayoutGenerator():
                 base_layout = last_layout_base
                 increment_base = last_layout_inc_base
                 factor = (-last_increment) / INCREMENT + 1
+                if last_layout_direction == 'increment':
+                    factor += last_layout_factor
                 desired_coverage = last_layout_pebs + (INCREMENT * factor)
                 how = 'increment'
             # last laout was incremented by < MAX_GAP%
