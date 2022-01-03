@@ -60,6 +60,7 @@ for repeat in range(1, args.repeats+1):
 
 df = pd.concat(dataframe_list)
 mean_df = df.groupby(df.index).mean()
+median_df = df.groupby(df.index).median()
 std_df = df.groupby(df.index).std()
 
 import datetime
@@ -89,6 +90,7 @@ if outliers.any().any():
 
 # if there are no outliers, write the aggregated results
 writeDataframeToCsv(mean_df, output_dir + 'mean.csv')
+writeDataframeToCsv(median_df, output_dir + 'median.csv')
 if not single_layout:
     writeDataframeToCsv(df, output_dir + 'all_repeats.csv')
     writeDataframeToCsv(std_df, output_dir + 'std.csv')
