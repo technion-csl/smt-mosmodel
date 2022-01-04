@@ -848,6 +848,7 @@ class LayoutGenerator():
         # initialize required values with None
         base_layout = desired_coverage = pages = pebs_coverage = how = expected_real_coverage = increment_base = factor = None
         method = 'right-tail'
+        last_layout_method = None
 
         # is this the first layout to be generated for the current group
         if self.state_log.hasOnlyBaseLayouts():
@@ -998,7 +999,7 @@ class LayoutGenerator():
         assert pebs_coverage is not None
         assert how is not None
         assert increment_base is not None
-        if last_layout_method == 'left-tail':
+        if last_layout_method is not None and last_layout_method == 'left-tail':
             increment_value = -INCREMENT * factor
         else:
             increment_value = pebs_coverage - self.state_log.getPebsCoverage(base_layout)
