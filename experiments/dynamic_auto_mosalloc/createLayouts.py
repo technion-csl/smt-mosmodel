@@ -343,6 +343,19 @@ class StateLog(Log):
         left = diffs.iloc[idx]
         return right['layout'], left['layout']
 
+    def isLastLayoutIrregular(self, layout):
+        assert len(self.df) > 2
+        last_record = self.df.iloc[len(self.df)-1]
+        last_layout_base = self.getBaseLayout(last_record['layout'])
+        prev_last_record = self.df.iloc[len(self.df)-2]
+        if last_record['scan_base'] == prev_last_record['scan_base'] and last_record['scan_method'] == 'right-tail':
+            if last_record['pebs_coverage'] > prev_last_record['pebs_coverage'] and last_record['real_coverage'] < prev_last_record['real_coverage']:
+                new_pebs_coverage = last_record['pebs_coverage'] + last_record['scan_value']
+                return new_pebs_coverage
+            if last_record['pebs_coverage'] < prev_last_record['pebs_coverage'] and last_record['real_coverage'] > prev_last_record['real_coverage']:
+                new_pebs_coverage = (last_record['pebs_coverage'] + self.getPebsCoverage(last_layout_base)) / 2
+                return new_pebs_coverage
+        return None
 
 class LayoutGenerator():
     def __init__(self, pebs_df, results_df, layout, exp_dir):
@@ -797,7 +810,7 @@ class LayoutGenerator():
             if high['layout'] == layout:
                 return None, None
             ratio = (high['real_coverage'] - desired_real_coverage) / (high['real_coverage'] - base['real_coverage'])
-            pebs_delta = ratio * (high['pebs_coverage'] - low['pebs_coverage'])
+            pebs_delta = ratio * (high['pebs_coverage'] - base['pebs_coverage'])
             desired_coverage = high['pebs_coverage'] - pebs_delta
             factor = pebs_delta / INCREMENT
             return factor, desired_coverage
@@ -881,6 +894,10 @@ class LayoutGenerator():
                     desired_coverage = None # will be updated below
                 else:
                     desired_coverage = self.state_log.getPebsCoverage(base_layout) + (INCREMENT * factor)
+            elif self.state_log.isLastLayoutIrregular(last_layout) is not None:
+                desired_coverage = self.state_log.isLastLayoutIrregular(last_layout)
+                how = last_layout_direction
+                factor = last_layout_factor
             elif last_increment <= 0:
                 print(f'[DEBUG]: {last_layout} got a lower real-coverage than expected.')
                 base_layout = last_layout_base
