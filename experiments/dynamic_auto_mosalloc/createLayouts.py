@@ -156,6 +156,7 @@ class SubgroupsLog(Log, metaclass=Singleton):
                 budget = 0
             else:
                 budget = round((delta / total_deltas) * total_budgets)
+                budget = max(budget, int(delta / 2))
             self.df.at[index, 'total_budget'] = budget
             self.df.at[index, 'remaining_budget'] = budget
         # fix total budgets due to rounding
