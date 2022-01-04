@@ -776,7 +776,7 @@ class LayoutGenerator():
         base = self.state_log.getRecord('layout', base_layout)
         inc_base_layout = self.state_log.getIncBaseLayout(layout)
         inc_base = self.state_log.getRecord('layout', inc_base_layout)
-        df = self.state_log.query(f'scan_base == {base_layout} and increment_base == {inc_base_layout}')
+        df = self.state_log.df.query(f'scan_base == "{base_layout}" and increment_base == "{inc_base_layout}"')
         df = df.sort_values('real_coverage', ascending=True)
         low = high = None
         for index, row in df.iterrows():
