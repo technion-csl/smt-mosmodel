@@ -224,8 +224,8 @@ class StateLog(Log):
 
     def addRecord(self,
                   layout,
-                  scan_method, scan_direction, 
-                  scan_value, scan_factor, scan_base, 
+                  scan_method, scan_direction,
+                  scan_value, scan_factor, scan_base,
                   pebs_coverage, expected_real_coverage, increment_base,
                   pages, offset,
                   writeLog=True):
@@ -806,7 +806,7 @@ class LayoutGenerator():
             last_layout_pebs = self.state_log.getPebsCoverage(last_layout)
             last_layout_direction = self.state_log.getField('layout', last_layout, 'scan_direction')
             if last_layout_direction == 'increment':
-                last_layout_factor = self.state_log.getLayoutScanFactor(last_layout)            
+                last_layout_factor = self.state_log.getLayoutScanFactor(last_layout)
             else:
                 last_layout_factor = 1
 
@@ -853,21 +853,13 @@ class LayoutGenerator():
             # last layout was incremented by > MAX_GAP%
                 increment_base = last_layout_inc_base
                 last_layout_factor = self.state_log.getLayoutScanFactor(last_layout)
-                how = 'decrement'
-                last_layout_method = self.state_log.getField('layout', last_layout, 'scan_method')                
+                last_layout_method = self.state_log.getField('layout', last_layout, 'scan_method')
                 base_layout = last_layout_base
                 base_layout_pebs = self.state_log.getPebsCoverage(base_layout)
-                if last_layout_direction == 'increment':
-                    #increment_value = self.state_log.getField('layout', last_layout, 'scan_value')
-                    factor = INCREMENT / last_increment
-                    desired_coverage = base_layout_pebs + (INCREMENT * factor)
-                    pages, pebs_coverage = self.addPages(base_layout, desired_coverage)
-                    method = 'right-tail'
-                    how = 'increment'
                 if last_layout_method == 'right-tail':
                     # try first to add less tail pages to base layout
                     #increment_value = self.state_log.getField('layout', last_layout, 'scan_value')
-                    factor = INCREMENT / last_increment
+                    factor = last_layout_factor * (INCREMENT / last_increment)
                     desired_coverage = base_layout_pebs + (INCREMENT * factor)
                     pages, pebs_coverage = self.addPages(base_layout, desired_coverage)
                     method = 'right-tail'
