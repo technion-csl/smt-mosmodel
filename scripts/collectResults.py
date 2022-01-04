@@ -85,8 +85,8 @@ if outliers.any().any():
             print('remove outlier: ',l_old_path,' --> ',l_new_path)
             os.rename(l_old_path, l_new_path)
         print('The results with outliers have been removed, please try to run them again')
-    else:
-        sys.exit('Cells marked with True are the outliers.')
+    #else:
+    #    sys.exit('Cells marked with True are the outliers.')
 
 # if there are no outliers, write the aggregated results
 writeDataframeToCsv(mean_df, output_dir + 'mean.csv')
