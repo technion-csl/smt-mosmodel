@@ -322,6 +322,7 @@ class StateLog(Log):
         base_layout = start_layout
         current_coverage = start_layout_coverage
         current_layout = start_layout
+        print(start_layout)
         for index, row in df.iterrows():
             if row['real_coverage'] <= (current_coverage + MAX_GAP):
                 current_layout = row['layout']
@@ -458,9 +459,11 @@ class LayoutGenerator():
         # calculate the real-coverage for each group and update the log
         # if the subgroups-log was not created yet then create it based on the
         # current results
+        subgroups_layouts = ['layout1', 'layout2','layout3', 'layout4','layout5','layout6','layout7','layout8','layout9']
         if self.subgroups_log.empty():
-            results_df_sorted = results_df.sort_values('walk_cycles',
-                                                       ascending=False)
+            results_df_sorted = self.results_df.query(
+                    f'layout in {subgroups_layouts}').sort_values(
+                            'walk_cycles', ascending=False)
             for index, row in results_df_sorted.iterrows():
                 #TODO update pebs coverage for subgroups
                 self.subgroups_log.addRecord(row['layout'], -1)
@@ -750,16 +753,34 @@ class LayoutGenerator():
 
         return new_pages, new_pebs_coverage
 
-    def removeTailPagesByFactor(self, layout, base_layout, factor=2):
+    def addCutComplementPages(self, layout, base_layout, factor=2):
         assert factor >= 2
+        factor = int(factor)
         pages, offset = LayoutGeneratorUtils.getLayoutHugepages(layout, self.exp_dir)
         base_pages, offset = LayoutGeneratorUtils.getLayoutHugepages(base_layout, self.exp_dir)
         pages_coverage = LayoutGeneratorUtils.calculateTlbCoverage(self.pebs_df, pages)
         base_coverage = LayoutGeneratorUtils.calculateTlbCoverage(self.pebs_df, base_pages)
 
         candidate_pages = list(set(pages) - set(base_pages))
-        candidates = self.pebs_df.query('PAGE_NUMBER in {pages}'.format(pages=candidate_pages))
-        print(f'[DEBUG]: number of candidate pages to be removed: {len(candidate_pages)} with total-coverage={candidates["TLB_COVERAGE"].sum()}')
+        candidate_pages.sort()
+        remove_pages = candidate_pages[::factor]
+        for p in remove_pages:
+            candidate_pages.remove(p)
+        new_pages = base_pages + candidate_pages
+        new_coverage = LayoutGeneratorUtils.calculateTlbCoverage(self.pebs_df, new_pages)
+        return new_pages, new_coverage
+
+    def removeTailPagesByFactor(self, layout, base_layout, factor=2):
+        assert factor >= 2
+        factor = int(factor)
+        pages, offset = LayoutGeneratorUtils.getLayoutHugepages(layout, self.exp_dir)
+        base_pages, offset = LayoutGeneratorUtils.getLayoutHugepages(base_layout, self.exp_dir)
+        pages_coverage = LayoutGeneratorUtils.calculateTlbCoverage(self.pebs_df, pages)
+        base_coverage = LayoutGeneratorUtils.calculateTlbCoverage(self.pebs_df, base_pages)
+
+        candidates = self.pebs_df.query(f'PAGE_NUMBER in {pages} and PAGE_NUMBER not in {base_pages}')
+        print(f'[DEBUG]: removing pages from {layout} while skipping {base_layout} pages with a factor={factor}')
+        print(f'[DEBUG]: number of candidate pages to be removed: {len(candidates)} with total-coverage={candidates["TLB_COVERAGE"].sum()}')
         sorted_candidates = candidates.sort_values('TLB_COVERAGE')
         i = 0
         removed_pages = []
@@ -768,14 +789,14 @@ class LayoutGenerator():
                 removed_pages.append(p)
             i += 1
 
-        df = self.pebs_df.query('PAGE_NUMBER in {pages} and PAGE_NUMBER not in {removed}'.format(
-            pages=pages, removed=removed_pages))
+        df = self.pebs_df.query(f'PAGE_NUMBER in {pages} and PAGE_NUMBER not in {removed_pages}')
 
         next_coverage = df['TLB_COVERAGE'].sum()
         print('----------------------------------------------')
-        print('[DEBUG]: removeTailPages: current layout coverage: ' + str(pages_coverage))
-        print('[DEBUG]: removeTailPages: next layout coverage: ' + str(next_coverage))
-        print('[DEBUG]: removeTailPages: base layout coverage: ' + str(base_coverage))
+        print(f'[DEBUG]: removeTailPages: current layout coverage: {pages_coverage}')
+        print(f'[DEBUG]: removeTailPages: next layout coverage: {next_coverage}')
+        print(f'[DEBUG]: removeTailPages: base layout coverage: {base_coverage}')
+        print(f'[DEBUG]: removeTailPages: total removed pages: {len(removed_pages)}')
         print('----------------------------------------------')
         #assert next_coverage < pages_coverage
         #assert next_coverage > base_coverage
@@ -886,9 +907,12 @@ class LayoutGenerator():
             base_layout = last_layout_base
             increment_base = last_layout_inc_base
 
-            next_layout, base_layout = self.state_log.getNextLayoutToIncrement(last_layout_base)
-            if next_layout != last_layout_inc_base and next_layout != last_layout:
-                print(f'[DEBUG]: moving to new base to increment: {next_layout}')
+            next_layout, base_layout = self.state_log.getNextLayoutToIncrement(self.state_log.getRightLayoutName())
+            if base_layout is None:
+                base_layout = self.state_log.getRightLayoutName()
+                deisred_coverage = self.state_log.getPebsCoverage(self.state_log.getLeftLayoutName())
+            elif next_layout != last_layout_inc_base and next_layout != last_layout:
+                print(f'[DEBUG]: moving to new base to increment: {next_layout} and base_layot: {base_layout}')
                 increment_base = next_layout
                 how = 'increment'
                 factor = self.state_log.getLayoutScanFactor(base_layout)
@@ -977,12 +1001,28 @@ class LayoutGenerator():
         if expected_real_coverage is None:
             expected_real_coverage = self.state_log.getRealCoverage(increment_base) + INCREMENT
         if factor is None:
-            factor = self.getLayoutScanFactor(base_layout)
+            factor = self.state_log.getLayoutScanFactor(base_layout)
         if desired_coverage is None:
             desired_coverage = self.getPebsCoverageBasedOnRealCoverage(base_layout, expected_real_coverage)
 
-        if how == 'increment' and pages is None:
+        max_coverage = self.state_log.getPebsCoverage(self.state_log.getLeftLayoutName())
+        if desired_coverage >= max_coverage:
+            last_layout = self.state_log.getLastLayoutName()
+            last_layout_base = self.state_log.getBaseLayout(last_layout)
+
+            right, left = self.state_log.getMaxGapLayouts()
+            base_layout = right
+            #last_layout = self.state_log.getLastLayoutName()
+            #factor = self.state_log.getLayoutScanFactor(last_layout) + 1
+            factor = 2
+            if base_layout == last_layout_base:
+                factor = self.state_log.getLayoutScanFactor(last_layout) + 1
+            #factor = 2
+            pages, pebs_coverage = self.addCutComplementPages(left, base_layout, factor)
+            how = 'increment'
+        elif how == 'increment' and pages is None:
             pages, pebs_coverage = self.addPages(base_layout, desired_coverage)
+
         # if all previous methods did not work, then try to remove tail pages from the leftmost layout
         if pages is None:
             print('[DEBUG]: cannot add pages, trying removing tail pages from the left layout...')
