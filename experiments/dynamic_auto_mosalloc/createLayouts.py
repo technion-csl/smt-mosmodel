@@ -797,7 +797,7 @@ class LayoutGenerator():
             if high['layout'] == layout:
                 return None, None
             ratio = (high['real_coverage'] - desired_real_coverage) / (high['real_coverage'] - base['real_coverage'])
-            pebs_delta = ratio * (high['pebs_coverage'] - low['pebs_coverage'])            
+            pebs_delta = ratio * (high['pebs_coverage'] - low['pebs_coverage'])
             desired_coverage = high['pebs_coverage'] - pebs_delta
             factor = pebs_delta / INCREMENT
             return factor, desired_coverage
@@ -817,7 +817,7 @@ class LayoutGenerator():
             if high['pebs_coverage'] <= low['pebs_coverage']:
                 return None, None
             ratio = (desired_real_coverage - low['real_coverage']) / (high['real_coverage'] - low['real_coverage'])
-            pebs_delta = ratio * (high['pebs_coverage'] - low['pebs_coverage'])            
+            pebs_delta = ratio * (high['pebs_coverage'] - low['pebs_coverage'])
             desired_coverage = low['pebs_coverage'] + pebs_delta
             factor = pebs_delta / INCREMENT
             base_layout = low['layout']
@@ -839,7 +839,7 @@ class LayoutGenerator():
         # is this the first layout to be generated for the current group
         if self.state_log.hasOnlyBaseLayouts():
             increment_base = base_layout = self.state_log.getRightLayoutName()
-            desired_coverage = self.state_log.getPebsCoverage(base_layout) + INCREMENT            
+            desired_coverage = self.state_log.getPebsCoverage(base_layout) + INCREMENT
             next_layout, base_layout = self.state_log.getNextLayoutToIncrement(base_layout)
             factor = self.state_log.getLayoutScanFactor(base_layout)
             # next_layout could be different than the returned base_layout in case that
@@ -859,6 +859,7 @@ class LayoutGenerator():
             last_layout_inc_base = self.state_log.getIncBaseLayout(last_layout)
             last_layout_pebs = self.state_log.getPebsCoverage(last_layout)
             last_layout_direction = self.state_log.getField(last_layout, 'scan_direction')
+            last_layout_method = self.state_log.getField(last_layout, 'scan_method')
             if last_layout_direction == 'increment':
                 last_layout_factor = self.state_log.getLayoutScanFactor(last_layout)
             else:
@@ -912,9 +913,8 @@ class LayoutGenerator():
             # last layout was incremented by > MAX_GAP%
                 increment_base = last_layout_inc_base
                 last_layout_factor = self.state_log.getLayoutScanFactor(last_layout)
-                last_layout_method = self.state_log.getField(last_layout, 'scan_method')
                 base_layout = last_layout_base
-                base_layout_pebs = self.state_log.getPebsCoverage(base_layout)                
+                base_layout_pebs = self.state_log.getPebsCoverage(base_layout)
                 if last_layout_method == 'right-tail':
                     expected_real_coverage = self.state_log.getExpectedRealCoverage(last_layout)
                     factor, desired_coverage = self.concludeCoverageForCommonBase(last_layout, expected_real_coverage)
