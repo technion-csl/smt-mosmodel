@@ -908,6 +908,7 @@ class LayoutGenerator():
             increment_base = last_layout_inc_base
 
             next_layout, base_layout = self.state_log.getNextLayoutToIncrement(self.state_log.getRightLayoutName())
+            assert base_layout is not None
             if base_layout is None:
                 base_layout = self.state_log.getRightLayoutName()
                 deisred_coverage = self.state_log.getPebsCoverage(self.state_log.getLeftLayoutName())
@@ -1005,7 +1006,8 @@ class LayoutGenerator():
         if desired_coverage is None:
             desired_coverage = self.getPebsCoverageBasedOnRealCoverage(base_layout, expected_real_coverage)
 
-        max_coverage = self.state_log.getPebsCoverage(self.state_log.getLeftLayoutName())
+        #max_coverage = self.state_log.getPebsCoverage(self.state_log.getLeftLayoutName())
+        max_coverage = 100
         if desired_coverage >= max_coverage:
             last_layout = self.state_log.getLastLayoutName()
             last_layout_base = self.state_log.getBaseLayout(last_layout)
