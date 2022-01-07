@@ -561,9 +561,13 @@ class LayoutGenerator():
         max_gap = abs(self.state_log.getRealCoverage(right) - self.state_log.getRealCoverage(left))
         print(f'[DEBUG]: >>>>>>>>>> current max-gap: {max_gap} <<<<<<<<<<')
         base_layout = right
-        desired_coverage = (self.state_log.getPebsCoverage(right) + self.state_log.getPebsCoverage(left)) / 2
+        last_record = self.state_log.getLastRecord()
+        if last_record['scan_method'] == 'reduce-max' and abs(last_record['expected_real_coverage'] - last_record['real_coverage']) > MAX_GAP:
+            factor = self.state_log.getLayoutScanFactor(base_layout) * 2
+        else:
+            factor = self.state_log.getLayoutScanFactor(base_layout) + 1
         expected_real_coverage = (self.state_log.getRealCoverage(right) + self.state_log.getRealCoverage(left)) / 2
-        pages, pebs_coverage = self.addPages(right, desired_coverage)
+        pages, pebs_coverage = self.addCutComplementPages(left, base_layout, factor)
         if pages is None:
             desired_real_coverage = (self.state_log.getRealCoverage(right) + self.state_log.getRealCoverage(left)) / 2
             pages, pebs_coverage = self.removeTailPagesBasedOnRealCoverage(
@@ -571,8 +575,9 @@ class LayoutGenerator():
             how = f'decrement ({left})'
         assert pages is not None
         LayoutGeneratorUtils.writeLayout(self.layout, pages, self.exp_dir)
+        increment_value = pebs_coverage - self.state_log.getPebsCoverage(right)
         self.state_log.addRecord(self.layout, method, how,
-                                 desired_coverage, 1, base_layout,
+                                 increment_value, factor, base_layout,
                                  pebs_coverage, expected_real_coverage,
                                  base_layout, pages, 0)
         # decrease current group's budget by 1
