@@ -614,6 +614,10 @@ class LayoutGenerator():
             self.state_log.writeRealCoverage()
 
     def addPages(self, base_layout, desired_coverage):
+        if desired_coverage >= 100:
+            print('[WARNING]: trying to add pages to get pebs coverage >= 100%')
+            print('[DEBUG]: move to remove pages from the left layout instead')
+            return None, 0
         print('====== add tail pages based on pebs=====')
         pages, pebs_coverage = self.addPagesBasedOnPebsCoverage(base_layout, desired_coverage, tail=True)
         if pages is None:
