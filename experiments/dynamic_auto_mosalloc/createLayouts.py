@@ -555,7 +555,7 @@ class LayoutGenerator():
 
     def improveMaxGapFurthermore(self):
         print(self.state_log.df)
-        method = 'right-tail'
+        method = 'reduce-max'
         how = 'increment'
         right, left = self.state_log.getMaxGapLayouts()
         max_gap = abs(self.state_log.getRealCoverage(right) - self.state_log.getRealCoverage(left))
