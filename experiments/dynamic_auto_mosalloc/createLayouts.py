@@ -621,6 +621,7 @@ class LayoutGenerator():
         factor = 2
         if base_layout == last_layout_base:
             factor = self.state_log.getLayoutScanFactor(last_layout) + 1
+            factor = max(factor, 2)
         pages, pebs_coverage = self.addCutComplementPages(left, base_layout, factor)
         return pages, pebs_coverage
 
