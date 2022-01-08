@@ -562,8 +562,8 @@ class LayoutGenerator():
         print(f'[DEBUG]: >>>>>>>>>> current max-gap: {max_gap} <<<<<<<<<<')
         base_layout = right
         last_record = self.state_log.getLastRecord()
-        if last_record['scan_method'] == 'reduce-max' and abs(last_record['expected_real_coverage'] - last_record['real_coverage']) > MAX_GAP:
-            factor = self.state_log.getLayoutScanFactor(base_layout) * 2
+        if last_record['scan_method'] == 'reduce-max' and abs(last_record['expected_real_coverage'] - last_record['real_coverage']) >= max_gap:
+            factor = last_record['scan_factor'] * 2
         else:
             factor = self.state_log.getLayoutScanFactor(base_layout) + 1
         expected_real_coverage = (self.state_log.getRealCoverage(right) + self.state_log.getRealCoverage(left)) / 2
