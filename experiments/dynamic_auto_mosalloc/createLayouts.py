@@ -626,7 +626,7 @@ class LayoutGenerator():
         return pages, pebs_coverage
 
     def addPages(self, base_layout, desired_coverage):
-        if desired_coverage >= 100:
+        if (desired_coverage + INCREMENT) >= 100:
             print('[WARNING]: trying to add pages to get pebs coverage >= 100%')
             print('[DEBUG]: move to remove pages from the left layout instead')
             return self.handleOverMaxPebsCoverageCornerCase()
@@ -1027,7 +1027,7 @@ class LayoutGenerator():
         if desired_coverage is None:
             desired_coverage = self.getPebsCoverageBasedOnRealCoverage(base_layout, expected_real_coverage)
 
-        if desired_coverage >= 100:
+        if (desired_coverage + INCREMENT) >= 100:
             pages, pebs_coverage = self.handleOverMaxPebsCoverageCornerCase()
             how = 'increment'
         elif how == 'increment' and pages is None:
