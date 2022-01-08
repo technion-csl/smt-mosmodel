@@ -613,11 +613,22 @@ class LayoutGenerator():
             self.state_log.writeLog()
             self.state_log.writeRealCoverage()
 
+    def handleOverMaxPebsCoverageCornerCase(self):
+        last_layout = self.state_log.getLastLayoutName()
+        last_layout_base = self.state_log.getBaseLayout(last_layout)
+        right, left = self.state_log.getMaxGapLayouts()
+        base_layout = right
+        factor = 2
+        if base_layout == last_layout_base:
+            factor = self.state_log.getLayoutScanFactor(last_layout) + 1
+        pages, pebs_coverage = self.addCutComplementPages(left, base_layout, factor)
+        return pages, pebs_coverage
+
     def addPages(self, base_layout, desired_coverage):
         if desired_coverage >= 100:
             print('[WARNING]: trying to add pages to get pebs coverage >= 100%')
             print('[DEBUG]: move to remove pages from the left layout instead')
-            return None, 0
+            return self.handleOverMaxPebsCoverageCornerCase()
         print('====== add tail pages based on pebs=====')
         pages, pebs_coverage = self.addPagesBasedOnPebsCoverage(base_layout, desired_coverage, tail=True)
         if pages is None:
@@ -1015,21 +1026,8 @@ class LayoutGenerator():
         if desired_coverage is None:
             desired_coverage = self.getPebsCoverageBasedOnRealCoverage(base_layout, expected_real_coverage)
 
-        #max_coverage = self.state_log.getPebsCoverage(self.state_log.getLeftLayoutName())
-        max_coverage = 100
-        if desired_coverage >= max_coverage:
-            last_layout = self.state_log.getLastLayoutName()
-            last_layout_base = self.state_log.getBaseLayout(last_layout)
-
-            right, left = self.state_log.getMaxGapLayouts()
-            base_layout = right
-            #last_layout = self.state_log.getLastLayoutName()
-            #factor = self.state_log.getLayoutScanFactor(last_layout) + 1
-            factor = 2
-            if base_layout == last_layout_base:
-                factor = self.state_log.getLayoutScanFactor(last_layout) + 1
-            #factor = 2
-            pages, pebs_coverage = self.addCutComplementPages(left, base_layout, factor)
+        if desired_coverage >= 100:
+            pages, pebs_coverage = self.handleOverMaxPebsCoverageCornerCase()
             how = 'increment'
         elif how == 'increment' and pages is None:
             pages, pebs_coverage = self.addPages(base_layout, desired_coverage)
