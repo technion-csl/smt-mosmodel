@@ -156,7 +156,8 @@ class SubgroupsLog(Log, metaclass=Singleton):
                 budget = 0
             else:
                 budget = round((delta / total_deltas) * total_budgets)
-                budget = max(budget, int(delta / 2))
+                # we have 41 layouts in total to create dynamically (each can get 2.5 in the best case)
+                budget = max(budget, int(delta / 2.5))
             self.df.at[index, 'total_budget'] = budget
             self.df.at[index, 'remaining_budget'] = budget
         # fix total budgets due to rounding
