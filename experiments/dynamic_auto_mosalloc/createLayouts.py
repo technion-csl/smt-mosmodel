@@ -983,19 +983,14 @@ class LayoutGenerator():
                 base_layout_pebs = self.state_log.getPebsCoverage(base_layout)
                 if last_layout_method == 'right-tail':
                     expected_real_coverage = self.state_log.getExpectedRealCoverage(last_layout)
-                    factor, desired_coverage = self.concludeCoverageForCommonBase(last_layout, expected_real_coverage)
-                    if factor is not None:
-                        pages, pebs_coverage = self.addPages(base_layout, desired_coverage)
-                        method = 'right-tail'
-                        how = 'increment'
-                    else:
-                        # try first to add less tail pages to base layout
-                        #increment_value = self.state_log.getField(last_layout, 'scan_value')
-                        factor = last_layout_factor * (INCREMENT / last_increment)
-                        desired_coverage = base_layout_pebs + (INCREMENT * factor)
-                        pages, pebs_coverage = self.addPages(base_layout, desired_coverage)
-                        method = 'right-tail'
-                        how = 'increment'
+                    #increment_value = self.state_log.getField(last_layout, 'scan_value')
+                    #factor = last_layout_factor * (INCREMENT / last_increment)
+                    #factor = last_layout_factor / 2
+                    factor = last_layout_factor / max(2, (last_increment / INCREMENT))
+                    desired_coverage = base_layout_pebs + (INCREMENT * factor)
+                    pages, pebs_coverage = self.addPages(base_layout, desired_coverage)
+                    method = 'right-tail'
+                    how = 'increment'
                     # if add tail pages does not work then try to remove tail
                     if pages is None:
                         last_layout_real_coverage = self.state_log.getRealCoverage(last_layout)
