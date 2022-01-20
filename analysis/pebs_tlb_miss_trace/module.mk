@@ -45,29 +45,33 @@ $(MEM_BINS_2MB_CHART_FILE): $(MEM_BINS_2MB_CSV_FILE)
 		--figure_y_label="tlb misses" --time_windows=1
 
 $(MEM_BINS_4KB_CSV_FILE): $(PEBS_EXP_OUT_DIR)
-	$(PERF_MEM_REPORT_PREFIX) -i $^/perf.data report | \
+	{ $(PERF_MEM_REPORT_PREFIX) -i $^/perf.data report | \
 		$(FIX_DELIM_IN_PERF_MEM_OUTPUT_HEADER) | \
 		$(BIN_ADDRESSES) --width=4096 --output=$@ \
-		--pools_range_file=$^/pools_base_pointers.out
+		--pools_range_file=$^/pools_base_pointers.out ;} >> $(dir $@)/analyze.log 2>&1
+	! grep -q "lost" $(dir $@)/analyze.log
 
 $(MEM_BINS_2MB_BRK_RATIO_CSV_FILE): $(MEM_BINS_2MB_CSV_FILE)
 	$(CALCULATE_PAGES_WEIGHTS) --type brk --input $< --output $@
 
 $(MEM_BINS_2MB_CSV_FILE): $(PEBS_EXP_OUT_DIR)
-	$(PERF_MEM_REPORT_PREFIX) -i $^/perf.data report | \
+	{ $(PERF_MEM_REPORT_PREFIX) -i $^/perf.data report | \
 		$(FIX_DELIM_IN_PERF_MEM_OUTPUT_HEADER) | \
 		$(BIN_ADDRESSES) --width=$$(( 2**21 )) --output=$@ \
-		--pools_range_file=$^/pools_base_pointers.out
+		--pools_range_file=$^/pools_base_pointers.out ;} >> $(dir $@)/analyze.log 2>&1
+	! grep -q "lost" $(dir $@)/analyze.log
 
 $(MEM_ACCESS_COUNT_FILE): $(PEBS_EXP_OUT_DIR)
-	$(PERF_MEM_REPORT_PREFIX) -i $^/perf.data report | \
+	{ $(PERF_MEM_REPORT_PREFIX) -i $^/perf.data report | \
 		$(FIX_DELIM_IN_PERF_MEM_OUTPUT_HEADER) | \
-		$(COUNT_MEMORY_ACCESSES) -o $@ -p $^/pools_base_pointers.out
+		$(COUNT_MEMORY_ACCESSES) -o $@ -p $^/pools_base_pointers.out ;} >> $(dir $@)/analyze.log 2>&1
+	! grep -q "lost" $(dir $@)/analyze.log
 
 $(MEM_ACCESSES_FILE): $(PEBS_EXP_OUT_DIR)
-	$(PERF_MEM_REPORT_PREFIX) -i $^/perf.data report | \
+	{ $(PERF_MEM_REPORT_PREFIX) -i $^/perf.data report | \
 		$(FIX_DELIM_IN_PERF_MEM_OUTPUT_HEADER) | \
-		$(PARSE_PERF_MEM_RAW_FILE) -o $@ -p $^/pools_base_pointers.out
+		$(PARSE_PERF_MEM_RAW_FILE) -o $@ -p $^/pools_base_pointers.out ;} >> $(dir $@)/analyze.log 2>&1
+	! grep -q "lost" $(dir $@)/analyze.log
 
 $(MODULE_NAME)/clean:
 	rm -rf $(PEBS_TARGET_FILES)
