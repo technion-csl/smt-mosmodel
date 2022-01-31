@@ -78,5 +78,5 @@ $(MEM_ACCESSES_FILE): $(PEBS_EXP_OUT_DIR)
 
 $(MODULE_NAME)/clean:
 	rm -rf $(PEBS_TARGET_FILES)
-	cd $(dir $@) && rm -f *csv*
+	cd $(dir $@) && rm -f *csv* && rm -f analyze.log
 
