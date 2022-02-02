@@ -58,7 +58,11 @@ $(MOSALLOC_TOOL): $(MOSALLOC_MAKEFILE)
 	$(APT_INSTALL) cmake libgtest-dev
 	cd $(dir $<)
 	cmake .
-	make -j && ctest -VV
+	if [ -z $$SKIP_MOSALLOC_TEST ]; then \
+		make -j && ctest -VV; \
+	else \
+		make -j; \
+	fi
 
 $(MOSALLOC_MAKEFILE):
 	git submodule update --init --progress
