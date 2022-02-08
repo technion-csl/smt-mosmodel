@@ -58,7 +58,7 @@ $(MOSALLOC_TOOL): $(MOSALLOC_MAKEFILE)
 	$(APT_INSTALL) cmake libgtest-dev
 	cd $(dir $<)
 	cmake .
-	if [ -z $$SKIP_MOSALLOC_TEST ]; then \
+	if [[ $$SKIP_MOSALLOC_TEST == 0 ]]; then \
 		make -j && ctest -VV; \
 	else \
 		make -j; \
