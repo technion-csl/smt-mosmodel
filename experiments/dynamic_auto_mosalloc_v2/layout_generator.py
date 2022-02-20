@@ -1027,8 +1027,8 @@ class LayoutGeneratorUtils(metaclass=Singleton):
         return windows, total_weight
 
     def writeLayoutAll2mb(layout, output):
-        assert LayoutGeneratorUtils.brk_footprint is None
-        assert LayoutGeneratorUtils.mmap_footprint is None
+        assert LayoutGeneratorUtils.brk_footprint is not None
+        assert LayoutGeneratorUtils.mmap_footprint is not None
 
         brk_pool_size = Utils.round_up(
             LayoutGeneratorUtils.brk_footprint,
