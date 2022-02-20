@@ -13,7 +13,7 @@ from Utils.ConfigurationFile import Configuration
 sys.path.append(os.path.dirname(sys.argv[0])+"/../../analysis")
 from performance_statistics import PerformanceStatistics
 
-INCREMENT = MAX_GAP
+INCREMENT = MAX_GAP + 1
 LOW_GAP = (MAX_GAP / 4)
 
 class LayoutGenerator():
@@ -230,7 +230,6 @@ class LayoutGenerator():
             how = f'remove'
         assert pages is not None
         LayoutGeneratorUtils.writeLayout(self.layout, pages, self.exp_dir)
-        increment_value = pebs_coverage - self.state_log.getPebsCoverage(right)
         self.state_log.addRecord(self.layout, how,
                                  factor, base_layout,
                                  pebs_coverage, expected_real_coverage,
@@ -559,7 +558,8 @@ class LayoutGenerator():
             print(f'[DEBUG]: predicting next pebs coverage based on {right["layout"]} and {left["layout"]}')
             right_pebs = right['pebs_coverage']
             left_pebs = left['pebs_coverage']
-            desired_coverage = (right_pebs + left_pebs) / 2
+            pebs_avg = (right_pebs + left_pebs) / 2
+            desired_coverage = (pebs_avg + right_pebs) / 2
         elif right is not None and right['layout'] != self.state_log.getLastLayoutName():
             #desired_coverage = right['pebs_coverage'] + (desired_real_coverage - right['real_coverage']) + 2 * INCREMENT
             print(f'[DEBUG]: predicting next pebs coverage based on {right["layout"]}')
@@ -584,25 +584,13 @@ class LayoutGenerator():
                 return True
         return False
 
-    def createNextLayoutDynamically(self):
-        assert self.results_df is not None,'results file does not exist'
-        # fill or update SubgroupsLog and StateLog
-        if not self.updateLogs():
-            return
-        print('==============================================')
-        print(self.state_log.df)
-        print('----------------------------------------------')
-
-        out_union, only_in_left, not_in_right = self.getWorkingSetPages()
-
+    def getScanParameters(self, increment_base, base_layout, expected_real_coverage):
         right_layout = self.state_log.getRightLayoutName()
-        right_pebs_coverage = self.state_log.getPebsCoverage(right_layout)
         left_layout = self.state_log.getLeftLayoutName()
         left_pebs_coverage = self.state_log.getPebsCoverage(left_layout)
 
         last_record = self.state_log.getLastRecord()
-        increment_base, base_layout = self.state_log.getNextLayoutToIncrement(right_layout)
-        expected_real_coverage = self.state_log.getRealCoverage(increment_base) + INCREMENT
+        expected_real_coverage = self.state_log.getRealCoverage(increment_base) + MAX_GAP
         inc_base_real_coverage = self.state_log.getRealCoverage(increment_base)
         base_real_coverage = self.state_log.getRealCoverage(base_layout)
         base_pebs_coverage = self.state_log.getPebsCoverage(base_layout)
@@ -646,9 +634,15 @@ class LayoutGenerator():
                     print(f'[DEBUG]: predicting next pebs coverage as {predicted_coverage} to get real coverage of {expected_real_coverage}')
                     desired_pebs_coverage = predicted_coverage
                     factor = (left_pebs_coverage - desired_pebs_coverage) / INCREMENT
+        return scan_direction, factor, desired_pebs_coverage, base_layout
 
-        assert scan_direction is not None
+    def applyScanParameters(self, scan_direction, factor, desired_pebs_coverage, base_layout):
+        pages = None
+        pebs_coverage = -1
 
+        left_layout = self.state_log.getLeftLayoutName()
+        left_pebs_coverage = self.state_log.getPebsCoverage(left_layout)
+        out_union, only_in_left, not_in_right = self.getWorkingSetPages()
         if scan_direction == 'add':
             pages, pebs_coverage = self.addPagesV2(base_layout, out_union, desired_pebs_coverage)
             if pages is None or self.pagesSetExist(pages):
@@ -672,11 +666,33 @@ class LayoutGenerator():
                     factor = (left_pebs_coverage - desired_pebs_coverage) / INCREMENT
                 pages, pebs_coverage = self.removePagesV2(left_layout, only_in_left, desired_pebs_coverage)
 
+        assert pages is not None
+        return pages, pebs_coverage
+
+    def createNextLayoutDynamically(self):
+        assert self.results_df is not None,'results file does not exist'
+        # fill or update SubgroupsLog and StateLog
+        if not self.updateLogs():
+            return
+        print('==============================================')
+        print(self.state_log.df)
+        print('----------------------------------------------')
+
+        right_layout = self.state_log.getRightLayoutName()
+
+        increment_base, base_layout = self.state_log.getNextLayoutToIncrement(right_layout)
+        expected_real_coverage = self.state_log.getRealCoverage(increment_base) + INCREMENT
+        assert increment_base is not None
+
+        scan_direction, factor, desired_pebs_coverage, base_layout = \
+            self.getScanParameters(increment_base, base_layout, expected_real_coverage)
+        assert scan_direction is not None
+        assert base_layout is not None
+        assert factor is not None, 'factor should be defined'
+        
+        pages, pebs_coverage = self.applyScanParameters(scan_direction, factor, desired_pebs_coverage, base_layout)
         assert pages is not None, 'cannot find pages to remove'
         assert pebs_coverage is not None, 'pebs coverage should be calculated'
-        assert factor is not None, 'factor should be defined'
-        assert base_layout is not None
-        assert increment_base is not None
 
         self.state_log.addRecord(self.layout, scan_direction,
                                  factor, base_layout,
@@ -820,13 +836,13 @@ class LayoutGeneratorUtils(metaclass=Singleton):
         df = df[df['type'] == 'brk']
         df = df[df['pageSize'] == page_size]
         pages = []
-        offset_deviation = 0
+        offset = 0
         for index, row in df.iterrows():
             start_page = int(row['startOffset'] / page_size)
             end_page = int(row['endOffset'] / page_size)
-            offset_deviation = int(row['startOffset'] % page_size)
+            offset = int(row['startOffset'] % page_size)
             pages += list(range(start_page, end_page))
-        start_deviation = offset_deviation / LayoutGeneratorUtils.BASE_PAGE_4KB_SIZE
+        start_offset = offset / LayoutGeneratorUtils.BASE_PAGE_4KB_SIZE
         return pages
 
     def calculateTlbCoverage(pebs_df, pages):
