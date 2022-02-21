@@ -344,7 +344,7 @@ class LayoutGenerator():
         print(f'[DEBUG]: addPagesFromWorkingSet: trying to add {tail_head_order} pages to {base_layout} to get a coverage of : {desired_pebs_coverage:.3f}')
 
         candidate_pebs_coverage = working_set_df['TLB_COVERAGE'].sum()
-        if candidate_pebs_coverage + base_layout_pebs_coverage < desired_pebs_coverage - max_epsilon:
+        if candidate_pebs_coverage + base_layout_pebs < desired_pebs_coverage - max_epsilon:
             return None, 0
 
         epsilon = 0
