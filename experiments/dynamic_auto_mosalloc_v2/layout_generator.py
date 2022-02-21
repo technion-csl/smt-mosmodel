@@ -13,8 +13,9 @@ from Utils.ConfigurationFile import Configuration
 sys.path.append(os.path.dirname(sys.argv[0])+"/../../analysis")
 from performance_statistics import PerformanceStatistics
 
-INCREMENT = MAX_GAP
+INCREMENT = (MAX_GAP / 2)
 LOW_GAP = (MAX_GAP / 4)
+DEFAULT_FACTOR = 1.5
 
 class LayoutGenerator():
     def __init__(self, pebs_df, results_df, layout, exp_dir):
@@ -165,7 +166,7 @@ class LayoutGenerator():
             remaining_budget = left_layout['remaining_budget']
             if (remaining_budget + extra_budget) == 0:
                 print('===========================================================')
-                print(f'[DEBUG] consumed all budget (but still gaps to close) for subgroup: {right_layout["layout"]} - {left_layout["layout"]}')
+                print(f'[DEBUG] consumed all budget (but still have gaps to close) for subgroup: {right_layout["layout"]} - {left_layout["layout"]}')
                 print('===========================================================')
                 continue
             # if there is an extra budget that remained---and not used---from
@@ -176,7 +177,7 @@ class LayoutGenerator():
             break
         print('===========================================================')
         if found:
-            print(f'[DEBUG] star closing gaps for subgroup: {right_layout["layout"]} - {left_layout["layout"]}')
+            print(f'[DEBUG] start closing gaps for subgroup: {right_layout["layout"]} - {left_layout["layout"]}')
         else:
             print('[DEBUG] could not find subgroup to close its gaps')
         print('===========================================================')
@@ -553,29 +554,48 @@ class LayoutGenerator():
         right_layout = None if right is None else right['layout']
         left_layout = None if left is None else left['layout']
         print(f'[DEBUG]: tryToConcludeNextCoverage - the surrounding layouts:  {right_layout} < {desired_real_coverage} < {left_layout}')
-        print(f'last layout: {self.state_log.getLastLayoutName()}')
-        # if cannot predict the pebs coverage then fall back to the regular search method
+        # initialize the desired_coverage to None so if we cannot predict the pebs coverage
+        # then to fall back to the regular search method
         desired_coverage = None
         if right is not None and left is not None:
-            print(f'[DEBUG]: predicting next pebs coverage based on {right["layout"]} and {left["layout"]}')
             right_pebs = right['pebs_coverage']
+            right_real = right['real_coverage']
             left_pebs = left['pebs_coverage']
-            pebs_avg = (right_pebs + left_pebs) / 2
-            desired_coverage = (pebs_avg + right_pebs) / 2
-        elif right is not None and right['layout'] != self.state_log.getLastLayoutName():
-            #desired_coverage = right['pebs_coverage'] + (desired_real_coverage - right['real_coverage']) + 2 * INCREMENT
-            print(f'[DEBUG]: predicting next pebs coverage based on {right["layout"]}')
-            desired_coverage = right['pebs_coverage'] + 2 * INCREMENT
-            left_layout_pebs = self.state_log.getPebsCoverage(self.state_log.getLeftLayoutName())
-            if scan_direction == 'remove' and desired_coverage > left_layout_pebs:
-                desired_coverage = (right['pebs_coverage'] + left_layout_pebs) / 2
-        elif left is not None and left['layout'] != self.state_log.getLastLayoutName():
-            #desired_coverage = left['pebs_coverage'] - (left['real_coverage'] - desired_real_coverage) - 2 * INCREMENT
-            print(f'[DEBUG]: predicting next pebs coverage based on {left["layout"]}')
-            desired_coverage = left['pebs_coverage'] - 2 * INCREMENT
-            right_layout_pebs = self.state_log.getPebsCoverage(self.state_log.getRightLayoutName())
-            if scan_direction == 'add' and desired_coverage < right_layout_pebs:
-                desired_coverage = (left['pebs_coverage'] + right_layout_pebs) / 2
+            left_real = left['real_coverage']
+
+            right_pebs_real_scale = right_pebs / (right_real + 0.01) # add 0.01 to prevent zero div
+            left_pebs_real_scale = left_pebs / left_real
+            pebs_real_scale_avg = (right_pebs_real_scale / left_pebs_real_scale) / 2
+            scaled_pebs_coverage = desired_real_coverage * pebs_real_scale_avg
+            if left_pebs < scaled_pebs_coverage < right_pebs:
+                desired_coverage = scaled_pebs_coverage
+            else:
+                pebs_avg = (right_pebs + left_pebs) / 2
+                desired_coverage = pebs_avg
+            '''
+            # check if should prefer moving towards one of the two layouts
+            if self.state_log.getLastLayoutName() == left_layout:
+                desired_coverage = (pebs_avg + right_pebs) / 2
+            elif self.state_log.getLastLayoutName() == right_layout:
+                desired_coverage = (pebs_avg + left_pebs) / 2
+            else:
+                desired_coverage = pebs_avg
+            '''
+            print(f'[DEBUG]: predicting next pebs coverage based on {right_layout} and {left_layout} to: {desired_coverage}')
+        elif right_layout is not None and right_layout != self.state_log.getLastLayoutName():
+            desired_coverage = right['pebs_coverage'] + DEFAULT_FACTOR * INCREMENT
+            # fix the desired coverage in case it exceeds the interval bounds
+            mostleft_layout_pebs = self.state_log.getPebsCoverage(self.state_log.getLeftLayoutName())
+            if scan_direction == 'remove' and desired_coverage > mostleft_layout_pebs:
+                desired_coverage = (right['pebs_coverage'] + mostleft_layout_pebs) / 2
+            print(f'[DEBUG]: predicting next pebs coverage based on right layout: {right_layout} to: {desired_coverage}')
+        elif left_layout is not None and left_layout != self.state_log.getLastLayoutName():
+            desired_coverage = left['pebs_coverage'] - DEFAULT_FACTOR * INCREMENT
+            # fix the desired coverage in case it exceeds the interval bounds
+            mostright_layout_pebs = self.state_log.getPebsCoverage(self.state_log.getRightLayoutName())
+            if scan_direction == 'add' and desired_coverage < mostright_layout_pebs:
+                desired_coverage = (left['pebs_coverage'] + mostright_layout_pebs) / 2
+            print(f'[DEBUG]: predicting next pebs coverage based on left layout: {left_layout} to: {desired_coverage}')
 
         return desired_coverage
 
@@ -592,15 +612,25 @@ class LayoutGenerator():
         left_pebs_coverage = self.state_log.getPebsCoverage(left_layout)
 
         last_record = self.state_log.getLastRecord()
-        expected_real_coverage = self.state_log.getRealCoverage(increment_base) + MAX_GAP
         inc_base_real_coverage = self.state_log.getRealCoverage(increment_base)
+        expected_real_coverage = inc_base_real_coverage + MAX_GAP
         base_real_coverage = self.state_log.getRealCoverage(base_layout)
         base_pebs_coverage = self.state_log.getPebsCoverage(base_layout)
 
+        '''
+        elif self.state_log.hasOnlyOneNewLayout() and increment_base == last_record['increment_base']:
+            # if the first layout in the current interval did not succeed to
+            # close the next gap, then try to remove the delta between pebs and
+            # real coverage for the first layout hoping that it is a fixed delta
+            real_pebs_diff = last_record['pebs_coverage'] - last_record['real_coverage']
+            desired_pebs_coverage = expected_real_coverage + real_pebs_diff
+            factor = (desired_pebs_coverage - base_pebs_coverage) / INCREMENT
+            scan_direction = 'add'
+        '''
         scan_direction = None
         if self.state_log.hasOnlyBaseLayouts():
             # aggressive start with the first layout in the current subgroup/interval
-            factor = 2
+            factor = (2 * MAX_GAP) / INCREMENT
             desired_pebs_coverage =  inc_base_real_coverage - base_real_coverage + base_pebs_coverage + factor * INCREMENT
             scan_direction = 'add'
         else:
@@ -619,7 +649,7 @@ class LayoutGenerator():
                     base_layout = old_base_layout
                     # if the base layout was changed then reset the factor
                     if base_layout != last_record['scan_base'] and self.state_log.getGapBetweenLastRecordAndIncrementBase() > 0.1:
-                        factor = 2
+                        factor = DEFAULT_FACTOR
                     desired_pebs_coverage =  base_pebs_coverage + factor * INCREMENT + (inc_base_real_coverage - base_real_coverage)
                 else:
                     desired_pebs_coverage = predicted_coverage
@@ -655,7 +685,7 @@ class LayoutGenerator():
             print('[DEBUG]: could not add pages to get the desired coverage, moving to remove pages from the left layout')
             scan_direction = 'remove'
             base_layout = left_layout
-            factor = 2
+            factor = DEFAULT_FACTOR
             desired_pebs_coverage =  left_pebs_coverage - factor * INCREMENT
 
         if scan_direction == 'remove':

@@ -258,6 +258,10 @@ class StateLog(Log):
         df = self.df.query(f'scan_base != "none" and scan_base != "other"')
         return len(df) == 0
 
+    def hasOnlyOneNewLayout(self):
+        df = self.df.query(f'scan_base != "none" and scan_base != "other"')
+        return len(df) == 1
+
     def getRightLayoutName(self):
         return self.right_layout
 

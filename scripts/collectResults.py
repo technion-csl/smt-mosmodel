@@ -18,6 +18,8 @@ parser.add_argument('-r', '--repeats', default=1, type=int,
                     help='repeats number of each experiment layout')
 parser.add_argument('-d', '--remove_outliers', action='store_true',
                     help='if specified, then layouts with outliers will be removed')
+parser.add_argument('-s', '--skip_outliers', action='store_true',
+                    help='if specified, then will skip validating outliers existance')
 parser.add_argument('-o', '--output_dir', required=True,
                     help='the directory for all output files')
 args = parser.parse_args()
@@ -71,22 +73,23 @@ interesting_metrics = [metric for metric in interesting_metrics if metric in mea
 variation = std_df[interesting_metrics] / mean_df[interesting_metrics]
 outlier_threshold = 0.05
 outliers = variation > outlier_threshold
-if outliers.any().any():
-    print("Error: the results in", args.experiments_root, "showed considerable variation:")
-    print(outliers)
-    if args.remove_outliers:
-        now = str(datetime.datetime.now())[:19]
-        now = now.replace(" ","_").replace(":","-")
-        for layout, outlier in outliers.iterrows():
-            if not outlier['seconds-elapsed'] and not outlier['ref-cycles'] and not outlier['cpu-cycles']:
-                continue
-            l_old_path = args.experiments_root + '/' + layout
-            l_new_path = l_old_path + '.outlier.' + now
-            print('remove outlier: ',l_old_path,' --> ',l_new_path)
-            os.rename(l_old_path, l_new_path)
-        print('The results with outliers have been removed, please try to run them again')
-    #else:
-    #    sys.exit('Cells marked with True are the outliers.')
+if not args.skip_outliers:
+    if outliers.any().any():
+        print("Error: the results in", args.experiments_root, "showed considerable variation")
+        print(outliers)
+        if args.remove_outliers:
+            now = str(datetime.datetime.now())[:19]
+            now = now.replace(" ","_").replace(":","-")
+            for layout, outlier in outliers.iterrows():
+                if not outlier['seconds-elapsed'] and not outlier['ref-cycles'] and not outlier['cpu-cycles']:
+                    continue
+                l_old_path = args.experiments_root + '/' + layout
+                l_new_path = l_old_path + '.outlier.' + now
+                print('remove outlier: ',l_old_path,' --> ',l_new_path)
+                os.rename(l_old_path, l_new_path)
+            print('The results with outliers have been removed, please try to run them again')
+        else:
+            sys.exit('Cells marked with True are the outliers.')
 
 # if there are no outliers, write the aggregated results
 writeDataframeToCsv(mean_df, output_dir + 'mean.csv')
