@@ -686,7 +686,8 @@ class LayoutGenerator():
                     base_layout = old_base_layout
                     # if the base layout was changed then reset the factor
                     if base_layout != last_record['scan_base'] and self.state_log.getGapBetweenLastRecordAndIncrementBase() > 0.1:
-                        factor = DEFAULT_FACTOR
+                        #factor = DEFAULT_FACTOR TODO: check if this change makes the scan better
+                        factor = MAX_GAP / INCREMENT
                     desired_pebs_coverage =  base_pebs_coverage + factor * INCREMENT + (inc_base_real_coverage - base_real_coverage)
                 else:
                     desired_pebs_coverage = predicted_coverage
@@ -705,7 +706,7 @@ class LayoutGenerator():
                     factor = (left_pebs_coverage - desired_pebs_coverage) / INCREMENT
         return scan_direction, factor, desired_pebs_coverage, base_layout
 
-    def applyScanParameters(self, scan_direction, factor, desired_pebs_coverage, base_layout):
+    def applyScanParameters(self, scan_direction, factor, desired_pebs_coverage, expected_real_coverage, base_layout):
         pages = None
         pebs_coverage = -1
 
@@ -722,8 +723,10 @@ class LayoutGenerator():
             print('[DEBUG]: could not add pages to get the desired coverage, moving to remove pages from the left layout')
             scan_direction = 'remove'
             base_layout = left_layout
-            factor = DEFAULT_FACTOR
-            desired_pebs_coverage =  left_pebs_coverage - factor * INCREMENT
+            #factor = DEFAULT_FACTOR
+            #desired_pebs_coverage =  left_pebs_coverage - factor * INCREMENT
+            desired_pebs_coverage = left_pebs_coverage - (self.state_log.getRealCoverage(left_layout) - expected_real_coverage)
+            factor = (left_pebs_coverage - desired_pebs_coverage) / INCREMENT
 
         if scan_direction == 'remove':
             if abs(left_pebs_coverage - 100) < 0.5:
@@ -760,7 +763,7 @@ class LayoutGenerator():
         assert factor is not None, 'factor should be defined'
 
         pages, pebs_coverage, scan_direction, factor, base_layout = \
-                self.applyScanParameters(scan_direction, factor, desired_pebs_coverage, base_layout)
+                self.applyScanParameters(scan_direction, factor, desired_pebs_coverage, expected_real_coverage, base_layout)
         assert pages is not None, 'cannot find pages to remove'
         assert pebs_coverage is not None, 'pebs coverage should be calculated'
 
