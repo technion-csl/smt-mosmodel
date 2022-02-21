@@ -327,7 +327,9 @@ class LayoutGenerator():
         base_layout_pebs_coverage = self.state_log.getPebsCoverage(base_layout)
 
         working_set_df = self.pebs_df.query(f'PAGE_NUMBER in {working_set} and PAGE_NUMBER not in {base_layout_pages}')
-        assert len(working_set_df) > 0
+        if len(working_set_df) == 0:
+            print(f'[DEBUG]: there is no more pages in pebs that can be added to {base_layout}')
+            return None, 0
 
         candidate_pebs_coverage = working_set_df['TLB_COVERAGE'].sum()
         print(f'[DEBUG]: trying to add pages to {base_layout} from a working-set of {len(working_set)} pages')
@@ -473,7 +475,7 @@ class LayoutGenerator():
         print(f'[DEBUG]: scaled desired pebs coverage: {scaled_desired_coverage}')
 
         return self.removePagesV2(base_layout, None, scaled_desired_coverage)
-        
+
     def removePagesV2(self, base_layout, working_set, desired_pebs_coverage):
         base_layout_pages = LayoutGeneratorUtils.getLayoutHugepages(base_layout, self.exp_dir)
         base_layout_coverage = self.state_log.getPebsCoverage(base_layout)
@@ -689,7 +691,7 @@ class LayoutGenerator():
         assert scan_direction is not None
         assert base_layout is not None
         assert factor is not None, 'factor should be defined'
-        
+
         pages, pebs_coverage = self.applyScanParameters(scan_direction, factor, desired_pebs_coverage, base_layout)
         assert pages is not None, 'cannot find pages to remove'
         assert pebs_coverage is not None, 'pebs coverage should be calculated'
