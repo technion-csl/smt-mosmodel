@@ -324,8 +324,11 @@ class LayoutGenerator():
         return factor
 
     def addPagesFromWorkingSet(self, base_layout, working_set, desired_pebs_coverage, tail=True):
+        pages = None
+        max_epsilon = 0.5
+
+        base_layout_pebs = self.state_log.getPebsCoverage(base_layout)
         base_layout_pages = LayoutGeneratorUtils.getLayoutHugepages(base_layout, self.exp_dir)
-        base_layout_pebs_coverage = self.state_log.getPebsCoverage(base_layout)
 
         working_set_df = self.pebs_df.query(f'PAGE_NUMBER in {working_set} and PAGE_NUMBER not in {base_layout_pages}')
         if len(working_set_df) == 0:
@@ -335,39 +338,65 @@ class LayoutGenerator():
         candidate_pebs_coverage = working_set_df['TLB_COVERAGE'].sum()
         print(f'[DEBUG]: trying to add pages to {base_layout} from a working-set of {len(working_set)} pages')
         print(f'[DEBUG]: working-set length after fitering out base pages is {len(working_set_df)} pages')
-        print(f'[DEBUG]: working-set total coverage: {candidate_pebs_coverage} and desired coverage is: {desired_pebs_coverage}')
-        if candidate_pebs_coverage + base_layout_pebs_coverage < desired_pebs_coverage:
-            return None, 0
+        print(f'[DEBUG]: working-set total coverage: {candidate_pebs_coverage} and desired coverage is: {desired_pebs_coverage:.3f}')
 
         tail_head_order='tail' if tail else 'head'
-        print(f'[DEBUG]: addPagesFromWorkingSet: trying to add {tail_head_order} pages to {base_layout} to get a coverage of : {desired_pebs_coverage}')
+        print(f'[DEBUG]: addPagesFromWorkingSet: trying to add {tail_head_order} pages to {base_layout} to get a coverage of : {desired_pebs_coverage:.3f}')
 
-        assert desired_pebs_coverage > base_layout_pebs_coverage
+        candidate_pebs_coverage = working_set_df['TLB_COVERAGE'].sum()
+        if candidate_pebs_coverage + base_layout_pebs_coverage < desired_pebs_coverage - max_epsilon:
+            return None, 0
+
+        epsilon = 0
+        while pages is None or self.pagesSetExist(pages):
+            epsilon += 0.1
+            if epsilon > max_epsilon:
+                break
+            max_pebs = desired_pebs_coverage + epsilon
+            min_pebs = desired_pebs_coverage
+            pages, pebs = self.__addPagesFromWorkingSet(base_layout, working_set_df, min_pebs, max_pebs, tail)
+        epsilon = 0
+        while pages is None or self.pagesSetExist(pages):
+            epsilon += 0.1
+            if epsilon > max_epsilon:
+                break
+            min_pebs = desired_pebs_coverage - epsilon
+            if min_pebs <= base_layout_pebs:
+                min_pebs = desired_pebs_coverage
+            max_pebs = desired_pebs_coverage
+            pages, pebs = self.__addPagesFromWorkingSet(base_layout, working_set_df, min_pebs, max_pebs, tail)
+
+        if pages is not None:
+            added_pages_len = len(set(pages) - set(base_layout_pages))
+            print(f'[DEBUG]: total added pages to {base_layout}: {added_pages_len}')
+            print(f'[DEBUG]: new layout coverage: {pebs}')
+
+        return pages, pebs
+
+    def __addPagesFromWorkingSet(self, base_layout, working_set_df, min_pebs_coverage, max_pebs_coverage, tail=True):
+        base_layout_pages = LayoutGeneratorUtils.getLayoutHugepages(base_layout, self.exp_dir)
+        base_layout_pebs_coverage = self.state_log.getPebsCoverage(base_layout)
+
+        assert min_pebs_coverage > base_layout_pebs_coverage
 
         df = working_set_df.sort_values('TLB_COVERAGE', ascending=tail)
 
         added_pages = []
         total_weight = base_layout_pebs_coverage
-        epsilon = 0.2 if tail else 5
-        max_coverage = desired_pebs_coverage + epsilon
-        min_coverage = desired_pebs_coverage
         for index, row in df.iterrows():
             page = row['PAGE_NUMBER']
             weight = row['TLB_COVERAGE']
             updated_total_weight = total_weight + weight
-            if updated_total_weight < max_coverage:
+            if updated_total_weight < max_pebs_coverage:
                 added_pages.append(page)
                 total_weight = updated_total_weight
-            if max_coverage >= total_weight >= min_coverage:
+            if max_pebs_coverage >= total_weight >= min_pebs_coverage:
                 break
         if len(added_pages) == 0:
             return None, 0
         new_pages = base_layout_pages + added_pages
         new_pages.sort()
         new_pebs_coverage = self.pebs_df.query(f'PAGE_NUMBER in {new_pages}')['TLB_COVERAGE'].sum()
-
-        print(f'[DEBUG]: total added pages to {base_layout}: {len(added_pages)}')
-        print(f'[DEBUG]: new layout coverage: {new_pebs_coverage}')
 
         return new_pages, new_pebs_coverage
 
@@ -462,8 +491,16 @@ class LayoutGenerator():
         pages, pebs_coverage = self.addPagesFromWorkingSet(base_layout, working_set, desired_pebs_coverage, tail=True)
         #if pages is None or self.pagesSetExist(pages):
         #    pages, pebs_coverage = self.addPagesFromWorkingSet(base_layout, working_set, desired_pebs_coverage, tail=False)
-        if pages is None or self.pagesSetExist(pages):
-            pages = None
+        if pages is None:
+            return None, 0
+        if self.pagesSetExist(pages):
+            if desired_pebs_coverage > pebs_coverage:
+                desired_pebs_coverage += 0.5
+            else:
+                desired_pebs_coverage -= 0.5
+            pages, pebs_coverage = self.addPagesFromWorkingSet(base_layout, working_set, desired_pebs_coverage, tail=True)
+            if self.pagesSetExist(pages):
+                return None, 0
         return pages, pebs_coverage
 
     def removePagesBasedOnRealCoverage(self, base_layout, desired_real_coverage):
@@ -534,9 +571,9 @@ class LayoutGenerator():
 
         # select all layouts that are in the right side if the desired coverage
         # and then select the one with the maximal pebs coverage
-        right_layouts = query.query(f'real_coverage <= {desired_real_coverage}').sort_values('pebs_coverage')
+        right_layouts = query.query(f'real_coverage < {desired_real_coverage}').sort_values('pebs_coverage')
         if len(right_layouts) > 0:
-            right = right_layouts.iloc[len(right_layouts) - 1]
+            right = right_layouts.iloc[-1]
             right_pebs = right['pebs_coverage']
         else:
             right = None
@@ -545,7 +582,7 @@ class LayoutGenerator():
         # select all layouts that are in the left side if the desired coverage
         # with a pebs coverage greater than the selected right layout
         # and then select from them the layout with the least pebs coverage
-        left_layouts = query.query(f'real_coverage >= {desired_real_coverage} and pebs_coverage > {right_pebs}').sort_values('pebs_coverage')
+        left_layouts = query.query(f'real_coverage > {desired_real_coverage} and pebs_coverage > {right_pebs}').sort_values('pebs_coverage')
         if len(left_layouts) > 0:
             left = left_layouts.iloc[0]
         else:
@@ -677,7 +714,7 @@ class LayoutGenerator():
         out_union, only_in_left, not_in_right = self.getWorkingSetPages()
         if scan_direction == 'add':
             pages, pebs_coverage = self.addPagesV2(base_layout, out_union, desired_pebs_coverage)
-            if pages is None or self.pagesSetExist(pages):
+            if pages is None:
                 pages, pebs_coverage = self.addPagesV2(base_layout, not_in_right, desired_pebs_coverage)
 
         # if cannot find pages to add, try to remove pages from the left layout
@@ -699,7 +736,7 @@ class LayoutGenerator():
                 pages, pebs_coverage = self.removePagesV2(left_layout, only_in_left, desired_pebs_coverage)
 
         assert pages is not None
-        return pages, pebs_coverage
+        return pages, pebs_coverage, scan_direction, factor, base_layout
 
     def createNextLayoutDynamically(self):
         assert self.results_df is not None,'results file does not exist'
@@ -722,7 +759,8 @@ class LayoutGenerator():
         assert base_layout is not None
         assert factor is not None, 'factor should be defined'
 
-        pages, pebs_coverage = self.applyScanParameters(scan_direction, factor, desired_pebs_coverage, base_layout)
+        pages, pebs_coverage, scan_direction, factor, base_layout = \
+                self.applyScanParameters(scan_direction, factor, desired_pebs_coverage, base_layout)
         assert pages is not None, 'cannot find pages to remove'
         assert pebs_coverage is not None, 'pebs coverage should be calculated'
 
@@ -773,55 +811,6 @@ class LayoutGeneratorUtils(metaclass=Singleton):
         #df.drop_duplicates(inplace=True, subset=important_columns)
         df = df.drop_duplicates(subset=important_columns)
         return df
-
-    def findTlbCoverageWindows(
-            pebs_df, tlb_coverage_percentage, base_pages=[]):
-
-        # start from the given base layout
-        windows = base_pages.copy()
-        total_weight = LayoutGeneratorUtils.calculateTlbCoverage(pebs_df, windows)
-        assert tlb_coverage_percentage >= total_weight,'findTlbCoverageWindows: the required tlb-coverage is less than base pages coverage'
-        remainder_coverage = tlb_coverage_percentage - total_weight
-
-        max_epsilon = 0.5
-        # filter-out pages that are in the base-pages
-        df = pebs_df.query(
-            'TLB_COVERAGE <= {target_coverage} and PAGE_NUMBER not in {pages}'.format(
-                target_coverage=remainder_coverage+max_epsilon,
-                pages=windows))
-
-        epsilon = 0.1
-        pages = None
-        coverage = 0
-        while pages is None:
-            pages, coverage = LayoutGeneratorUtils.__findTlbCoverageWindows(
-                df, remainder_coverage, epsilon)
-            epsilon += 0.1
-            if epsilon > max_epsilon:
-                break
-        if pages is None:
-            return None, 0
-        windows += pages
-        total_weight += coverage
-        return windows, total_weight
-
-    def __findTlbCoverageWindows(
-            df, tlb_coverage_percentage, epsilon):
-        total_weight = 0
-        windows = []
-        for index, row in df.iterrows():
-            weight = row['TLB_COVERAGE']
-            page_number = row['PAGE_NUMBER']
-            if (total_weight + weight) <= (tlb_coverage_percentage + epsilon):
-                total_weight += weight
-                windows.append(page_number)
-            if total_weight >= (tlb_coverage_percentage - epsilon):
-                break
-
-        if total_weight > (tlb_coverage_percentage + epsilon) \
-                or total_weight < (tlb_coverage_percentage - epsilon):
-            return None, 0
-        return windows, total_weight
 
     def writeLayoutAll2mb(layout, output):
         assert LayoutGeneratorUtils.brk_footprint is not None

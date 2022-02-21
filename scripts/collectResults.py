@@ -24,6 +24,9 @@ parser.add_argument('-o', '--output_dir', required=True,
                     help='the directory for all output files')
 args = parser.parse_args()
 
+if args.remove_outliers and args.skip_outliers:
+    sys.exit('Error: either --skip_outliers or --remove_outliers should be used')
+
 import os
 layout_list = []
 if args.layouts == None:
