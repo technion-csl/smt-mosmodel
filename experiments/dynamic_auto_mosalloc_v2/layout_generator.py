@@ -13,7 +13,7 @@ from Utils.ConfigurationFile import Configuration
 sys.path.append(os.path.dirname(sys.argv[0])+"/../../analysis")
 from performance_statistics import PerformanceStatistics
 
-INCREMENT = MAX_GAP + 1
+INCREMENT = MAX_GAP
 LOW_GAP = (MAX_GAP / 4)
 
 class LayoutGenerator():
@@ -459,8 +459,8 @@ class LayoutGenerator():
             return None, 0
 
         pages, pebs_coverage = self.addPagesFromWorkingSet(base_layout, working_set, desired_pebs_coverage, tail=True)
-        if pages is None or self.pagesSetExist(pages):
-            pages, pebs_coverage = self.addPagesFromWorkingSet(base_layout, working_set, desired_pebs_coverage, tail=False)
+        #if pages is None or self.pagesSetExist(pages):
+        #    pages, pebs_coverage = self.addPagesFromWorkingSet(base_layout, working_set, desired_pebs_coverage, tail=False)
         if pages is None or self.pagesSetExist(pages):
             pages = None
         return pages, pebs_coverage
@@ -683,7 +683,7 @@ class LayoutGenerator():
         right_layout = self.state_log.getRightLayoutName()
 
         increment_base, base_layout = self.state_log.getNextLayoutToIncrement(right_layout)
-        expected_real_coverage = self.state_log.getRealCoverage(increment_base) + INCREMENT
+        expected_real_coverage = self.state_log.getRealCoverage(increment_base) + MAX_GAP
         assert increment_base is not None
 
         scan_direction, factor, desired_pebs_coverage, base_layout = \
