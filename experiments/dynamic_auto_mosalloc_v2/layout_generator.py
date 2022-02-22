@@ -227,7 +227,7 @@ class LayoutGenerator():
         pages, pebs_coverage = self.addPagesByFactor(left, base_layout, factor)
         if pages is None:
             desired_real_coverage = (self.state_log.getRealCoverage(right) + self.state_log.getRealCoverage(left)) / 2
-            pages, pebs_coverage = self.removePagesV2(left, None, desired_real_coverage)
+            pages, pebs_coverage = self.removePagesBasedOnRealCoverage(left, desired_real_coverage)
             how = f'remove'
         assert pages is not None
         LayoutGeneratorUtils.writeLayout(self.layout, pages, self.exp_dir)
@@ -480,7 +480,7 @@ class LayoutGenerator():
         pages, pebs_coverage = self.addPagesByFactor(left, base_layout, factor)
         return pages, pebs_coverage
 
-    def addPagesV2(self, base_layout, working_set, desired_pebs_coverage, extra_pages=[]):
+    def addPagesV2(self, base_layout, working_set, desired_pebs_coverage):
         if desired_pebs_coverage >= 100:
             return self.addPagesFromLeftLayout()
 
@@ -700,6 +700,7 @@ class LayoutGenerator():
                 if predicted_coverage is None:
                     print('[DEBUG]: could not predict next coverage...')
                     desired_pebs_coverage =  left_pebs_coverage - factor * INCREMENT
+                    print(f'[DEBUG]: pages will be removed to match a new desired pebs coverage: {desired_pebs_coverage}')
                 else:
                     print(f'[DEBUG]: predicting next pebs coverage as {predicted_coverage} to get real coverage of {expected_real_coverage}')
                     desired_pebs_coverage = predicted_coverage
@@ -730,13 +731,21 @@ class LayoutGenerator():
 
         if scan_direction == 'remove':
             if abs(left_pebs_coverage - 100) < 0.5:
+                print('[DEBUG]: the left layout is the all-2MB layout ==> removing from all pages in left layout')
                 pages, pebs_coverage = self.removePagesV2(left_layout, None, desired_pebs_coverage)
             else:
-                min_pebs_coverage = left_pebs_coverage - LayoutGeneratorUtils.calculateTlbCoverage(self.pebs_df, only_in_left)
+                only_in_left_coverage = LayoutGeneratorUtils.calculateTlbCoverage(self.pebs_df, only_in_left)
+                min_pebs_coverage = left_pebs_coverage - only_in_left_coverage
+                print(f'[DEBUG]: pebs coverage for pages only in left: {only_in_left_coverage} ==> min allowed pebs coverage: {min_pebs_coverage}')
                 if desired_pebs_coverage < min_pebs_coverage:
                     desired_pebs_coverage = min_pebs_coverage
                     factor = (left_pebs_coverage - desired_pebs_coverage) / INCREMENT
+                    print(f'[DEBUG]: the new desired pebs coverage [{desired_pebs_coverage}] is lower than the min allowed pebs coverage [{min_pebs_coverage}]')
                 pages, pebs_coverage = self.removePagesV2(left_layout, only_in_left, desired_pebs_coverage)
+                if pages is None or self.pagesSetExist(pages):
+                    print('[DEBUG]: could not find a distinct pages subset after removing from left. Moving to remove from all pages in left layout')
+                    #pages, pebs_coverage = self.removePagesBasedOnRealCoverage(left_layout, expected_real_coverage)
+                    pages, pebs_coverage = self.removePagesV2(left_layout, None, desired_pebs_coverage)
 
         assert pages is not None
         return pages, pebs_coverage, scan_direction, factor, base_layout
