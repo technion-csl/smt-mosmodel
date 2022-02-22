@@ -216,25 +216,34 @@ class LayoutGenerator():
         how = 'reduce-max'
         right, left = self.state_log.getMaxGapLayouts()
         max_gap = abs(self.state_log.getRealCoverage(right) - self.state_log.getRealCoverage(left))
-        print(f'[DEBUG]: >>>>>>>>>> current max-gap: {max_gap} <<<<<<<<<<')
-        base_layout = right
+        print(f'[DEBUG]: >>>>>>>>>> current max-gap: {max_gap} by layouts: {right}-{left} <<<<<<<<<<')
+
+        base_layout = left
+        inc_layout = right
         last_record = self.state_log.getLastRecord()
-        if last_record['scan_direction'] == 'reduce-max' and abs(last_record['expected_real_coverage'] - last_record['real_coverage']) >= max_gap:
-            factor = last_record['scan_factor'] * 2
-        else:
-            factor = self.state_log.getLayoutScanFactor(base_layout) + 1
-        expected_real_coverage = (self.state_log.getRealCoverage(right) + self.state_log.getRealCoverage(left)) / 2
+        last_layout = self.state_log.getLastLayoutName()
+        last_base = self.state_log.getBaseLayout(last_layout)
+        last_inc = self.state_log.getIncBaseLayout(last_layout)
+        last_direction = last_record['scan_direction']
+        last_factor = self.state_log.getLayoutScanFactor(last_layout)
+
+        factor = 2
+        if base_layout == last_base and inc_layout == last_inc and last_direction == 'reduce-max':
+            factor = last_factor + 1
+            factor = max(factor, 2)
+
         pages, pebs_coverage = self.addPagesByFactor(left, base_layout, factor)
+
+        expected_real_coverage = (self.state_log.getRealCoverage(right) + self.state_log.getRealCoverage(left)) / 2
         if pages is None:
-            desired_real_coverage = (self.state_log.getRealCoverage(right) + self.state_log.getRealCoverage(left)) / 2
-            pages, pebs_coverage = self.removePagesBasedOnRealCoverage(left, desired_real_coverage)
-            how = f'remove'
+            pages, pebs_coverage = self.removePagesBasedOnRealCoverage(left, expected_real_coverage)
+
         assert pages is not None
         LayoutGeneratorUtils.writeLayout(self.layout, pages, self.exp_dir)
         self.state_log.addRecord(self.layout, how,
                                  factor, base_layout,
                                  pebs_coverage, expected_real_coverage,
-                                 base_layout, pages)
+                                 inc_layout, pages)
         # decrease current group's budget by 1
         self.subgroups_log.decreaseRemainingBudget(
             self.state_log.getLeftLayoutName())
