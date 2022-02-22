@@ -478,29 +478,27 @@ class LayoutGenerator():
             factor = self.state_log.getLayoutScanFactor(last_layout) + 1
             factor = max(factor, 2)
         pages, pebs_coverage = self.addPagesByFactor(left, base_layout, factor)
-        return pages, pebs_coverage
+        return pages, pebs_coverage, base_layout, factor
 
-    def addPagesV2(self, base_layout, working_set, desired_pebs_coverage):
-        if desired_pebs_coverage >= 100:
-            return self.addPagesFromLeftLayout()
+    def addPagesV2(self, base_layout, working_set1, working_set2, desired_pebs_coverage):
+        """
+        Add pages to base_layout to get a total pebs-coverage as close as
+        possible to desired_pebs_coverage. The pages should be added from
+        working_set1, if cannot find such pages, then try to use working_set2
+        instead.
+        """
+        pages = None
+        pebs_coverage = 0
 
-        if len(working_set) == 0:
-            print('[DEBUG]: the working set (pages) is empty, skipping adding pages')
+        if len(working_set1) > 0:
+            pages, pebs_coverage = self.addPagesFromWorkingSet(base_layout, working_set1, desired_pebs_coverage, tail=True)
+
+        if (pages is None or self.pagesSetExist(pages)) and len(working_set2) > 0:
+            pages, pebs_coverage = self.addPagesFromWorkingSet(base_layout, working_set2, desired_pebs_coverage, tail=True)
+
+        if pages is None or self.pagesSetExist(pages):
             return None, 0
 
-        pages, pebs_coverage = self.addPagesFromWorkingSet(base_layout, working_set, desired_pebs_coverage, tail=True)
-        #if pages is None or self.pagesSetExist(pages):
-        #    pages, pebs_coverage = self.addPagesFromWorkingSet(base_layout, working_set, desired_pebs_coverage, tail=False)
-        if pages is None:
-            return None, 0
-        if self.pagesSetExist(pages):
-            if desired_pebs_coverage > pebs_coverage:
-                desired_pebs_coverage += 0.5
-            else:
-                desired_pebs_coverage -= 0.5
-            pages, pebs_coverage = self.addPagesFromWorkingSet(base_layout, working_set, desired_pebs_coverage, tail=True)
-            if self.pagesSetExist(pages):
-                return None, 0
         return pages, pebs_coverage
 
     def removePagesBasedOnRealCoverage(self, base_layout, desired_real_coverage):
@@ -599,25 +597,18 @@ class LayoutGenerator():
             right_real = right['real_coverage']
             left_pebs = left['pebs_coverage']
             left_real = left['real_coverage']
+            pebs_avg = (right_pebs + left_pebs) / 2
 
             right_pebs_real_scale = right_pebs / (right_real + 0.01) # add 0.01 to prevent zero div
             left_pebs_real_scale = left_pebs / left_real
             pebs_real_scale_avg = (right_pebs_real_scale / left_pebs_real_scale) / 2
             scaled_pebs_coverage = desired_real_coverage * pebs_real_scale_avg
+
             if left_pebs < scaled_pebs_coverage < right_pebs:
                 desired_coverage = scaled_pebs_coverage
             else:
-                pebs_avg = (right_pebs + left_pebs) / 2
                 desired_coverage = pebs_avg
-            '''
-            # check if should prefer moving towards one of the two layouts
-            if self.state_log.getLastLayoutName() == left_layout:
-                desired_coverage = (pebs_avg + right_pebs) / 2
-            elif self.state_log.getLastLayoutName() == right_layout:
-                desired_coverage = (pebs_avg + left_pebs) / 2
-            else:
-                desired_coverage = pebs_avg
-            '''
+
             print(f'[DEBUG]: predicting next pebs coverage based on {right_layout} and {left_layout} to: {desired_coverage}')
         elif right_layout is not None and right_layout != self.state_log.getLastLayoutName():
             desired_coverage = right['pebs_coverage'] + DEFAULT_FACTOR * INCREMENT
@@ -649,62 +640,81 @@ class LayoutGenerator():
         left_pebs_coverage = self.state_log.getPebsCoverage(left_layout)
 
         last_record = self.state_log.getLastRecord()
+        last_layout = self.state_log.getLastLayoutName()
+        last_pebs_coverage = self.state_log.getPebsCoverage(last_layout)
+
         inc_base_real_coverage = self.state_log.getRealCoverage(increment_base)
         expected_real_coverage = inc_base_real_coverage + MAX_GAP
         base_real_coverage = self.state_log.getRealCoverage(base_layout)
         base_pebs_coverage = self.state_log.getPebsCoverage(base_layout)
 
-        '''
-        elif self.state_log.hasOnlyOneNewLayout() and increment_base == last_record['increment_base']:
-            # if the first layout in the current interval did not succeed to
-            # close the next gap, then try to remove the delta between pebs and
-            # real coverage for the first layout hoping that it is a fixed delta
-            real_pebs_diff = last_record['pebs_coverage'] - last_record['real_coverage']
-            desired_pebs_coverage = expected_real_coverage + real_pebs_diff
-            factor = (desired_pebs_coverage - base_pebs_coverage) / INCREMENT
-            scan_direction = 'add'
-        '''
         scan_direction = None
         if self.state_log.hasOnlyBaseLayouts():
             # aggressive start with the first layout in the current subgroup/interval
             factor = (2 * MAX_GAP) / INCREMENT
             desired_pebs_coverage =  inc_base_real_coverage - base_real_coverage + base_pebs_coverage + factor * INCREMENT
             scan_direction = 'add'
-        else:
-            factor = self.getNextFactor()
-            scan_direction = last_record['scan_direction']
-            if scan_direction == 'add':
-                old_base_layout = base_layout
+            return scan_direction, factor, desired_pebs_coverage, base_layout
 
+        # if there is already at least one layout except the interval base layout
+        factor = self.getNextFactor()
+        scan_direction = last_record['scan_direction']
+        if scan_direction == 'add':
+            old_base_layout = base_layout
+
+            if base_layout != right_layout:
                 base_layout = self.state_log.getBaseLayout(base_layout)
-                if base_layout == 'none':
-                    base_layout = right_layout
-                # try to predict the desired pebs coverage based on previous runs
-                predicted_coverage = self.tryToConcludeNextCoverage(base_layout, expected_real_coverage, scan_direction)
-                if predicted_coverage is None:
-                    print('[DEBUG]: could not predict next coverage...')
-                    base_layout = old_base_layout
-                    # if the base layout was changed then reset the factor
-                    if base_layout != last_record['scan_base'] and self.state_log.getGapBetweenLastRecordAndIncrementBase() > 0.1:
-                        #factor = DEFAULT_FACTOR TODO: check if this change makes the scan better
-                        factor = MAX_GAP / INCREMENT
-                    desired_pebs_coverage =  base_pebs_coverage + factor * INCREMENT + (inc_base_real_coverage - base_real_coverage)
-                else:
-                    desired_pebs_coverage = predicted_coverage
-                    print(f'[DEBUG]: predicting next pebs coverage as {predicted_coverage} to get real coverage of {expected_real_coverage}')
-                    base_layout_coverage = self.state_log.getPebsCoverage(base_layout)
-                    factor = (desired_pebs_coverage - base_layout_coverage) / INCREMENT
-            else:
-                base_layout = left_layout
-                predicted_coverage = self.tryToConcludeNextCoverage(base_layout, expected_real_coverage, scan_direction)
-                if predicted_coverage is None:
-                    print('[DEBUG]: could not predict next coverage...')
-                    desired_pebs_coverage =  left_pebs_coverage - factor * INCREMENT
-                    print(f'[DEBUG]: pages will be removed to match a new desired pebs coverage: {desired_pebs_coverage}')
-                else:
-                    print(f'[DEBUG]: predicting next pebs coverage as {predicted_coverage} to get real coverage of {expected_real_coverage}')
-                    desired_pebs_coverage = predicted_coverage
+            # try to predict the desired pebs coverage based on previous runs
+            predicted_coverage = self.tryToConcludeNextCoverage(base_layout, expected_real_coverage, scan_direction)
+            if predicted_coverage is None:
+                print('[DEBUG]: could not predict next coverage...')
+                # reset base_layout, which was changed for the prediction process
+                base_layout = old_base_layout
+
+                # if the base layout was changed then reset the factor
+                last_increment = self.state_log.getGapBetweenLastRecordAndIncrementBase()
+                if base_layout != last_record['scan_base'] and last_increment > 0.1:
+                    factor = MAX_GAP / INCREMENT
+
+                # calculate the desired_pebs_coverage
+                desired_pebs_coverage =  base_pebs_coverage + factor * INCREMENT + (inc_base_real_coverage - base_real_coverage)
+                # if the left layout is not the all-2MB layout and we
+                # over-estimated desired_pebs_coverage, then fix it
+                left_layout_is_all_2MB = self.state_log.getPebsCoverage(left_layout) >= 99.9
+                if desired_pebs_coverage >= 99.9 and not left_layout_is_all_2MB:
+                    # update desired_pebs_coverage since we jumped too far
+                    desired_pebs_coverage = min(98, last_pebs_coverage + 2 * MAX_GAP)
                     factor = (left_pebs_coverage - desired_pebs_coverage) / INCREMENT
+            else: # predicted_coverage is not None
+                desired_pebs_coverage = predicted_coverage
+                print(f'[DEBUG]: predicting next pebs coverage as {predicted_coverage} to get real coverage of {expected_real_coverage}')
+                base_layout_coverage = self.state_log.getPebsCoverage(base_layout)
+                factor = (desired_pebs_coverage - base_layout_coverage) / INCREMENT
+        else: # scan_direction == 'remove'
+            base_layout = left_layout
+            predicted_coverage = self.tryToConcludeNextCoverage(base_layout, expected_real_coverage, scan_direction)
+            if predicted_coverage is None:
+                print('[DEBUG]: could not predict next coverage...')
+                desired_pebs_coverage =  left_pebs_coverage - factor * INCREMENT
+
+                out_union, only_in_left, not_in_right = self.getWorkingSetPages()
+                only_in_left_coverage = LayoutGeneratorUtils.calculateTlbCoverage(self.pebs_df, only_in_left)
+                min_pebs_coverage = left_pebs_coverage - only_in_left_coverage
+                if desired_pebs_coverage < min_pebs_coverage:
+                    print(f'[DEBUG]: pebs coverage for pages only in left: {only_in_left_coverage} ==> min allowed pebs coverage: {min_pebs_coverage}')
+                    print(f'[DEBUG]: the new desired pebs coverage [{desired_pebs_coverage}] is lower than the min allowed pebs coverage [{min_pebs_coverage}]')
+                    desired_pebs_coverage = min_pebs_coverage
+                if desired_pebs_coverage == 0:
+                    # if there is no common pages between the right and left layouts
+                    # and we are going to remove all left pages
+                    desired_pebs_coverage = max(last_pebs_coverage / 2, last_pebs_coverage - 2 * MAX_GAP)
+                factor = (left_pebs_coverage - desired_pebs_coverage) / INCREMENT
+                print(f'[DEBUG]: pages will be removed to match desired pebs coverage: {desired_pebs_coverage}')
+            else: # predicted_coverage is not None
+                print(f'[DEBUG]: predicting next pebs coverage as {predicted_coverage} to get real coverage of {expected_real_coverage}')
+                desired_pebs_coverage = predicted_coverage
+                factor = (left_pebs_coverage - desired_pebs_coverage) / INCREMENT
+
         return scan_direction, factor, desired_pebs_coverage, base_layout
 
     def applyScanParameters(self, scan_direction, factor, desired_pebs_coverage, expected_real_coverage, base_layout):
@@ -712,13 +722,21 @@ class LayoutGenerator():
         pebs_coverage = -1
 
         left_layout = self.state_log.getLeftLayoutName()
-        left_pebs_coverage = self.state_log.getPebsCoverage(left_layout)
+        left_layout_is_all_2MB = self.state_log.getPebsCoverage(left_layout) >= 99.9
         out_union, only_in_left, not_in_right = self.getWorkingSetPages()
         if scan_direction == 'add':
-            pages, pebs_coverage = self.addPagesV2(base_layout, out_union, desired_pebs_coverage)
-            if pages is None:
-                pages, pebs_coverage = self.addPagesV2(base_layout, not_in_right, desired_pebs_coverage)
+            if desired_pebs_coverage >= 99.9 and left_layout_is_all_2MB:
+                # if left layout is the all-2MB layout and we are trying to add
+                # more than 100% coverage (i.e., we still need to add more pages
+                # to close the real-coverage gap but we have no additional pages
+                # in pebs to be added), then add pages blindly, i.e., without
+                # considering pebs weights
+                pages, pebs_coverage, base_layout, factor = self.addPagesFromLeftLayout()
+            else:
+                pages, pebs_coverage = self.addPagesV2(base_layout, out_union, not_in_right, desired_pebs_coverage)
 
+        left_pebs_coverage = self.state_log.getPebsCoverage(left_layout)
+        left_real_coverage = self.state_log.getRealCoverage(left_layout)
         # if cannot find pages to add, try to remove pages from the left layout
         if scan_direction == 'add' and pages is None:
             print('[DEBUG]: could not add pages to get the desired coverage, moving to remove pages from the left layout')
@@ -726,26 +744,16 @@ class LayoutGenerator():
             base_layout = left_layout
             #factor = DEFAULT_FACTOR
             #desired_pebs_coverage =  left_pebs_coverage - factor * INCREMENT
-            desired_pebs_coverage = left_pebs_coverage - (self.state_log.getRealCoverage(left_layout) - expected_real_coverage)
+            desired_pebs_coverage = left_pebs_coverage - (left_real_coverage - expected_real_coverage)
             factor = (left_pebs_coverage - desired_pebs_coverage) / INCREMENT
 
         if scan_direction == 'remove':
-            if abs(left_pebs_coverage - 100) < 0.5:
-                print('[DEBUG]: the left layout is the all-2MB layout ==> removing from all pages in left layout')
+            pages, pebs_coverage = self.removePagesV2(left_layout, only_in_left, desired_pebs_coverage)
+            if pages is None or self.pagesSetExist(pages):
+                print('[DEBUG]: could not find a new pages subset after removing from left layout')
+                print('[DEBUG]: moving to remove from all pages in left layout')
+                #pages, pebs_coverage = self.removePagesBasedOnRealCoverage(left_layout, expected_real_coverage)
                 pages, pebs_coverage = self.removePagesV2(left_layout, None, desired_pebs_coverage)
-            else:
-                only_in_left_coverage = LayoutGeneratorUtils.calculateTlbCoverage(self.pebs_df, only_in_left)
-                min_pebs_coverage = left_pebs_coverage - only_in_left_coverage
-                print(f'[DEBUG]: pebs coverage for pages only in left: {only_in_left_coverage} ==> min allowed pebs coverage: {min_pebs_coverage}')
-                if desired_pebs_coverage < min_pebs_coverage:
-                    desired_pebs_coverage = min_pebs_coverage
-                    factor = (left_pebs_coverage - desired_pebs_coverage) / INCREMENT
-                    print(f'[DEBUG]: the new desired pebs coverage [{desired_pebs_coverage}] is lower than the min allowed pebs coverage [{min_pebs_coverage}]')
-                pages, pebs_coverage = self.removePagesV2(left_layout, only_in_left, desired_pebs_coverage)
-                if pages is None or self.pagesSetExist(pages):
-                    print('[DEBUG]: could not find a distinct pages subset after removing from left. Moving to remove from all pages in left layout')
-                    #pages, pebs_coverage = self.removePagesBasedOnRealCoverage(left_layout, expected_real_coverage)
-                    pages, pebs_coverage = self.removePagesV2(left_layout, None, desired_pebs_coverage)
 
         assert pages is not None
         return pages, pebs_coverage, scan_direction, factor, base_layout
@@ -759,39 +767,43 @@ class LayoutGenerator():
         print(self.state_log.df)
         print('----------------------------------------------')
 
+        # start looking for the next gap to close in the current interval
         right_layout = self.state_log.getRightLayoutName()
-
         increment_base, base_layout = self.state_log.getNextLayoutToIncrement(right_layout)
         expected_real_coverage = self.state_log.getRealCoverage(increment_base) + MAX_GAP
         assert increment_base is not None
 
+        # initialize the scan parameters based on current state
         scan_direction, factor, desired_pebs_coverage, base_layout = \
             self.getScanParameters(increment_base, base_layout, expected_real_coverage)
         assert scan_direction is not None
         assert base_layout is not None
         assert factor is not None, 'factor should be defined'
 
+        # apply the scan and create the next layout
         pages, pebs_coverage, scan_direction, factor, base_layout = \
                 self.applyScanParameters(scan_direction, factor, desired_pebs_coverage, expected_real_coverage, base_layout)
         assert pages is not None, 'cannot find pages to remove'
         assert pebs_coverage is not None, 'pebs coverage should be calculated'
 
+        # update the state log by adding next generated layout
         self.state_log.addRecord(self.layout, scan_direction,
                                  factor, base_layout,
                                  pebs_coverage, expected_real_coverage,
                                  increment_base, pages)
-        print('----------------------------------------------')
-        print(self.state_log.df)
-        print('==============================================')
-        print(self.layout)
-        print('#hugepages: '+ str(len(pages)))
-        print('weight: ' + str(pebs_coverage))
-        print('==============================================')
         # write the layout configuration file
         LayoutGeneratorUtils.writeLayout(self.layout, pages, self.exp_dir)
         # decrease current group's budget by 1
         self.subgroups_log.decreaseRemainingBudget(
             self.state_log.getLeftLayoutName())
+
+        print('----------------------------------------------')
+        print(self.state_log.df)
+        print('==============================================')
+        print(f'{self.layout} was generated with:')
+        print(f'\t#hugepages: {len(pages)}')
+        print(f'\tweight: {pebs_coverage}')
+        print('==============================================')
 
 class LayoutGeneratorUtils(metaclass=Singleton):
     HUGE_PAGE_2MB_SIZE = 2097152
