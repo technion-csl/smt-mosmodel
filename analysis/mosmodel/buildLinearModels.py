@@ -5,7 +5,7 @@ import pandas as pd
 
 import sys
 import os
-sys.path.append(os.path.dirname(sys.argv[0])+"/..")
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+'/..')
 from performance_statistics import PerformanceStatistics
 
 def loadDataframe(mean_file):
