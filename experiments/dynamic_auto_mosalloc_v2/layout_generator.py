@@ -569,15 +569,10 @@ class LayoutGenerator():
 
         return self.removePages(base_layout, None, scaled_desired_coverage)
 
-    def removePages(self, base_layout, working_set, desired_pebs_coverage):
-        pages, pebs = self.removePagesInOrder(base_layout, working_set, desired_pebs_coverage, True)
+    def removePages(self, base_layout, working_set, desired_pebs_coverage, tail=True):
+        pages, pebs = self.removePagesInOrder(base_layout, working_set, desired_pebs_coverage, tail)
         if pages is None or self.pagesSetExist(pages):
-            pages, pebs = self.removePagesInOrder(base_layout, None, desired_pebs_coverage, True)
-        # TODO: this code should be removed since using head pages will cause to unexpected real coverage results
-        #if pages is None or self.pagesSetExist(pages):
-        #    pages, pebs = self.removePagesInOrder(base_layout, working_set, desired_pebs_coverage, False)
-        #if pages is None or self.pagesSetExist(pages):
-        #    pages, pebs = self.removePagesInOrder(base_layout, None, desired_pebs_coverage, False)
+            pages, pebs = self.removePagesInOrder(base_layout, None, desired_pebs_coverage, tail)
         if pages is None or self.pagesSetExist(pages):
             return None, 0
         return pages, pebs
@@ -818,11 +813,10 @@ class LayoutGenerator():
                 return None, None, None, None, None
             else:
                 pages, pebs_coverage = self.addPages(base_layout, out_union, not_in_right, desired_pebs_coverage)
-                # TODO: should be removed since using head pages will cause to some unexpected real coverate values
-                #if pages is None:
-                #    base_layout = right_layout
-                #    factor = (desired_pebs_coverage - right_pebs_coverage) / INCREMENT
-                #    pages, pebs_coverage = self.addPages(base_layout, out_union, not_in_right, desired_pebs_coverage, False)
+                if pages is None:
+                    pages, pebs_coverage = self.addPages(base_layout, out_union, not_in_right, desired_pebs_coverage, False)
+                    if pages is not None:
+                        scan_order = 'head'
 
         # if cannot find pages to add, try to remove pages from the left layout
         if scan_direction == 'add' and pages is None:
@@ -837,12 +831,13 @@ class LayoutGenerator():
         if scan_direction == 'remove' and scan_order == 'tail':
             pages, pebs_coverage = self.removePages(left_layout, only_in_left, desired_pebs_coverage)
         if pages is None or (scan_direction == 'remove' and scan_order == 'head'):
-            scan_direction = 'remove'
-            scan_order = 'head'
-            pages, pebs = self.removePagesInOrder(left_layout, None, desired_pebs_coverage, False)
+            pages, pebs_coverage = self.removePages(left_layout, only_in_left, desired_pebs_coverage, False)
+            if pages is not None:
+                scan_direction = 'remove'
+                scan_order = 'head'
 
         #assert pages is not None
-        return pages, pebs_coverage, scan_direction, factor, base_layout
+        return pages, pebs_coverage, scan_direction, scan_order, factor, base_layout
 
     def createNextLayoutDynamically(self):
         assert self.results_df is not None,'results file does not exist'
@@ -868,7 +863,7 @@ class LayoutGenerator():
         assert factor is not None, 'factor should be defined'
 
         # apply the scan and create the next layout
-        pages, pebs_coverage, scan_direction, factor, base_layout = \
+        pages, pebs_coverage, scan_direction, scan_order, factor, base_layout = \
                 self.applyScanParameters(scan_direction, scan_order, factor, desired_pebs_coverage, expected_real_coverage, base_layout)
 
         # last chance to find some pages subset
