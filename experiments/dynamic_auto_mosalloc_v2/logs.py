@@ -193,7 +193,7 @@ class StateLog(Log):
     def __init__(self, exp_dir, results_df, right_layout, left_layout):
         default_columns = [
             'layout', 'scan_base', 'increment_base',
-            'scan_direction', 'scan_factor',
+            'scan_direction', 'scan_order', 'scan_factor',
             'pebs_coverage', 'increment_real_coverage',
             'expected_real_coverage', 'real_coverage',
             'walk_cycles']
@@ -215,6 +215,7 @@ class StateLog(Log):
     def addRecord(self,
                   layout,
                   scan_direction,
+                  scan_order,
                   scan_factor, scan_base,
                   pebs_coverage, expected_real_coverage, increment_base,
                   pages,
@@ -227,6 +228,7 @@ class StateLog(Log):
         self.df = self.df.append({
             'layout': layout,
             'scan_direction': scan_direction,
+            'scan_order': scan_order,
             'scan_factor': scan_factor,
             'scan_base': scan_base,
             'pebs_coverage': pebs_coverage,
@@ -326,7 +328,10 @@ class StateLog(Log):
         return current_layout, base_layout
 
     def getMaxGapLayouts(self):
-        diffs = self.df.sort_values('real_coverage', ascending=True)
+        left_coverage = self.getRealCoverage(self.getLeftLayoutName())
+        right_coverage = self.getRealCoverage(self.getRightLayoutName())
+        query = self.df.query(f'{right_coverage} <= real_coverage <= {left_coverage}')
+        diffs = query.sort_values('real_coverage', ascending=True)
         diffs['diff'] = diffs['real_coverage'].diff().abs()
 
         idx_label = diffs['diff'].idxmax()
