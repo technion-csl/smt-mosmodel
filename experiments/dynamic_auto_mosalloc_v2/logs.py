@@ -306,26 +306,42 @@ class StateLog(Log):
     def getLayoutScanFactor(self, layout_name):
         return self.getField(layout_name, 'scan_factor')
 
-    def getNextLayoutToIncrement(self, start_layout):
+    def getLayoutScanOrder(self, layout_name):
+        return self.getField(layout_name, 'scan_order')
+
+    def getLayoutScanDirection(self, layout_name):
+        return self.getField(layout_name, 'scan_direction')
+
+    def getNextBaseLayout(self, start_layout, scan_direction, scan_order):
+        start_layout_coverage = self.getRealCoverage(start_layout)
+        max_coverage = self.getRealCoverage(self.getLeftLayoutName())
+        increment_base = self.getNextIncrementBase(start_layout)
+        if increment_base is None:
+            return None
+        increment_layout_coverage = self.getRealCoverage(increment_base)
+
+        df = self.df.query(f'real_coverage >= {start_layout_coverage} and real_coverage <= {increment_layout_coverage}')
+        df = df.query(f'scan_base == "none" or (scan_direction == "{scan_direction}" and scan_order == "{scan_order}")')
+        df = df.sort_values('real_coverage', ascending=True)
+        assert len(df) > 0
+        return df.iloc[-1]['layout']
+
+    def getNextIncrementBase(self, start_layout):
         start_layout_coverage = self.getRealCoverage(start_layout)
         max_coverage = self.getRealCoverage(self.getLeftLayoutName())
         df = self.df.query(f'real_coverage >= {start_layout_coverage}')
         df = df.sort_values('real_coverage', ascending=True)
-        base_layout = start_layout
         current_coverage = start_layout_coverage
         current_layout = start_layout
-        print(start_layout)
         for index, row in df.iterrows():
             if row['real_coverage'] <= (current_coverage + MAX_GAP):
                 current_layout = row['layout']
-                if row['scan_base'] != 'other':
-                    base_layout = current_layout
                 current_coverage = row['real_coverage']
                 if current_coverage >= max_coverage:
-                    return None, None
+                    return None
             else:
                 break
-        return current_layout, base_layout
+        return current_layout
 
     def getMaxGapLayouts(self):
         left_coverage = self.getRealCoverage(self.getLeftLayoutName())
@@ -339,17 +355,3 @@ class StateLog(Log):
         right = diffs.iloc[idx-1]
         left = diffs.iloc[idx]
         return right['layout'], left['layout']
-
-    def isLastLayoutIrregular(self, layout):
-        assert len(self.df) > 2
-        last_record = self.df.iloc[len(self.df)-1]
-        last_layout_base = self.getBaseLayout(last_record['layout'])
-        prev_last_record = self.df.iloc[len(self.df)-2]
-        if last_record['scan_base'] == prev_last_record['scan_base'] and last_record['scan_direction'] == 'add':
-            if last_record['pebs_coverage'] > prev_last_record['pebs_coverage'] and last_record['real_coverage'] < prev_last_record['real_coverage']:
-                new_pebs_coverage = last_record['pebs_coverage'] + last_record['scan_factor'] * MAX_GAP
-                return new_pebs_coverage
-            if last_record['pebs_coverage'] < prev_last_record['pebs_coverage'] and last_record['real_coverage'] > prev_last_record['real_coverage']:
-                new_pebs_coverage = (last_record['pebs_coverage'] + self.getPebsCoverage(last_layout_base)) / 2
-                return new_pebs_coverage
-        return None
