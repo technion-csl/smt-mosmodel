@@ -6,6 +6,7 @@ import os.path
 
 MAX_GAP = 4
 MAX_TRIALS = 50
+EXPECTED_INCREMENT = MAX_GAP - 0.5
 
 class Singleton(type):
     _instances = {}
@@ -122,6 +123,18 @@ class SubgroupsLog(Log, metaclass=Singleton):
         if writeLog:
             self.writeLog()
 
+    def getSubgroup(self, num):
+        right = self.df.iloc[num]
+        left = self.df.iloc[num+1]
+        return right, left
+
+    def sortByRealCoverage(self):
+        #self.df = self.df.sort_values('real_coverage', ascending=True)
+        self.df = self.df.sort_values('walk_cycles', ascending=False)
+
+    def getExtraBudget(self):
+        return MAX_TRIALS - (self.getTotalBudget() + len(self.df))
+
     def calculateBudget(self):
         query = self.df.query('real_coverage == (-1)')
         assert len(query) == 0, 'SubgroupsLog.calculateBudget was called before updating the subgroups real_coverage.'
@@ -129,23 +142,22 @@ class SubgroupsLog(Log, metaclass=Singleton):
         if len(query) == 0:
             return
         # sort the group layouts by walk-cycles/real_coverage
-        self.df = self.df.sort_values('real_coverage', ascending=True)
+        self.sortByRealCoverage()
         # calculate the diff between each two adjacent layouts
         # (call it delta[i] for the diff between group[i] and group[i+1])
         self.df['delta'] = self.df['real_coverage'].diff().abs()
         self.df['delta'] = self.df['delta'].fillna(0)
         total_deltas = self.df.query(f'delta > {MAX_GAP}')['delta'].sum()
         # budgest = 50-9: num_layouts(50) - subgroups_layouts(9)
-        total_budgets = MAX_TRIALS - 9
+        total_budgets = MAX_TRIALS - len(self.df)
         for index, row in self.df.iterrows():
             delta = row['delta']
             # for each delta < MAX_GAP assign budget=0
             if delta <= MAX_GAP:
                 budget = 0
             else:
-                budget = round((delta / total_deltas) * total_budgets)
-                # we have 41 layouts in total to create dynamically (each can get 2.5 in the best case)
-                budget = max(budget, int(delta / 2.5))
+                budget = int((delta / total_deltas) * total_budgets)
+                budget = max(budget, int(delta / 3.5))
             self.df.at[index, 'total_budget'] = budget
             self.df.at[index, 'remaining_budget'] = budget
         # fix total budgets due to rounding
@@ -193,7 +205,7 @@ class StateLog(Log):
     def __init__(self, exp_dir, results_df, right_layout, left_layout):
         default_columns = [
             'layout', 'scan_base', 'increment_base',
-            'scan_direction', 'scan_order', 'scan_factor',
+            'scan_direction', 'scan_order', 'scan_value',
             'pebs_coverage', 'increment_real_coverage',
             'expected_real_coverage', 'real_coverage',
             'walk_cycles']
@@ -216,7 +228,7 @@ class StateLog(Log):
                   layout,
                   scan_direction,
                   scan_order,
-                  scan_factor, scan_base,
+                  scan_value, scan_base,
                   pebs_coverage, expected_real_coverage, increment_base,
                   pages,
                   writeLog=True):
@@ -229,7 +241,7 @@ class StateLog(Log):
             'layout': layout,
             'scan_direction': scan_direction,
             'scan_order': scan_order,
-            'scan_factor': scan_factor,
+            'scan_value': scan_value,
             'scan_base': scan_base,
             'pebs_coverage': pebs_coverage,
             'expected_real_coverage': expected_real_coverage,
@@ -303,14 +315,14 @@ class StateLog(Log):
     def getIncBaseLayout(self, layout_name):
         return self.getField(layout_name, 'increment_base')
 
-    def getLayoutScanFactor(self, layout_name):
-        return self.getField(layout_name, 'scan_factor')
-
     def getLayoutScanOrder(self, layout_name):
         return self.getField(layout_name, 'scan_order')
 
     def getLayoutScanDirection(self, layout_name):
         return self.getField(layout_name, 'scan_direction')
+
+    def getLayoutScanValue(self, layout_name):
+        return self.getField(layout_name, 'scan_value')
 
     def getNextBaseLayout(self, start_layout, scan_direction, scan_order):
         start_layout_coverage = self.getRealCoverage(start_layout)
@@ -342,6 +354,24 @@ class StateLog(Log):
             else:
                 break
         return current_layout
+
+    def getNextExpectedRealCoverage(self):
+        right_layout = self.getRightLayoutName()
+        next_increment = self.getNextIncrementBase(right_layout)
+        inc_real_coverage = self.getRealCoverage(next_increment)
+        max_expected_real = inc_real_coverage + 2 * EXPECTED_INCREMENT
+
+        df = self.df.query(f'{inc_real_coverage} < real_coverage <= {max_expected_real}')
+
+        if len(df) == 0:
+            return inc_real_coverage + EXPECTED_INCREMENT
+
+        df = df.sort_values('real_coverage')
+        upper_real_coverage = df.iloc[0]['real_coverage']
+        avg_real_coverage = (inc_real_coverage + upper_real_coverage) / 2
+        return avg_real_coverage
+
+
 
     def getMaxGapLayouts(self):
         left_coverage = self.getRealCoverage(self.getLeftLayoutName())
