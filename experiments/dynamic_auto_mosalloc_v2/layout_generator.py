@@ -122,41 +122,23 @@ class LayoutGenerator():
                 next_layout_num = self.redistributeSubgroup(right_layout, left_layout, next_layout_num)
 
     def redistributeSubgroup(self, right, left, start_layout_number):
-        new_layouts_num = 3
-
         right_pages = LayoutGeneratorUtils.getLayoutHugepages(right, self.exp_dir)
         left_pages = LayoutGeneratorUtils.getLayoutHugepages(left, self.exp_dir)
         right_pebs = LayoutGeneratorUtils.calculateTlbCoverage(self.pebs_df, right_pages)
         left_pebs = LayoutGeneratorUtils.calculateTlbCoverage(self.pebs_df, left_pages)
 
         # calculate the desired weights to distribute the new layout according to
-        pebs_delta = abs(left_pebs - right_pebs)
         pebs_min = min(right_pebs, left_pebs)
-        pebs_step = pebs_delta / (new_layouts_num + 1)
-        weights = [(pebs_min + (i+1) * pebs_step) for i in range(new_layouts_num)]
+        pebs_max = max(right_pebs, left_pebs)
+        pebs_avg = (pebs_min + pebs_max) / 2
+        weights = [pebs_min/2, pebs_avg/2, pebs_max/2]
 
-        # fill the buckets firstly using pages that are only in the left layout
-        left_df = self.pebs_df.query(f'PAGE_NUMBER in {left_pages} and PAGE_NUMBER not in {right_pages}')
-        left_layouts = self.fillBuckets(left_df, weights, False, False)
-
-        # then continue filling using pages that are only in the right layout
-        # note: the weights are updated inside the fillBuckets accordingly
-        right_df = self.pebs_df.query(f'PAGE_NUMBER in {right_pages} and PAGE_NUMBER not in {left_pages}')
-        right_layouts = self.fillBuckets(right_df, weights, False, True)
-        #right_layouts = [ [] for _ in range(new_layouts_num) ]
-
-        # and lastly fill the buckets using the remainder pages to get weights
-        # as close as possible to the desired weights
-        remainder_df = self.pebs_df.query(f'PAGE_NUMBER not in {right_pages} and PAGE_NUMBER not in {left_pages}')
-        #remainder_df = self.pebs_df.query(f'PAGE_NUMBER not in {left_pages}')
-        remainder_layouts = self.fillBuckets(remainder_df, weights, True, True)
-
-        # combine the pages from the three filled buckets
-        new_layouts = [left_layouts[i] + right_layouts[i] + remainder_layouts[i] for i in range(new_layouts_num)]
+        pages_group = self.fillBuckets(self.pebs_df, weights)
 
         layout_number = start_layout_number
-        for i in range(len(new_layouts)):
-            layout_name, pebs_coverage = self.writeLayout(layout_number, new_layouts[i])
+        for subset in itertools.combinations(pages_group, 2):
+            subset_pages = list(itertools.chain(*subset))
+            layout_name, pebs_coverage = self.writeLayout(layout_number, subset_pages)
             layout_number += 1
             self.subgroups_log.addRecord(layout_name, pebs_coverage)
         self.subgroups_log.writeLog()
@@ -660,6 +642,10 @@ class LayoutGenerator():
         scaled_pebs = layout_pebs * expected_to_real
         scaled_pebs_to_real = scaled_pebs / layout_expected_real
         scaled_desired_coverage = scaled_pebs_to_real * expected_real_coverage
+
+        if scaled_desired_coverage >= 100.0:
+            scaled_desired_coverage = layout_pebs + abs(layout_expected_real - layout_real)
+
         return scaled_desired_coverage
 
     def tryToConcludeNextCoverage(self, base_layout, expected_real_coverage, scan_direction, scan_order):
@@ -786,7 +772,7 @@ class LayoutGenerator():
                 scan_order = 'blind'
             else:
                 # update desired_pebs_coverage since we jumped too far
-                desired_pebs_coverage = (last_pebs_coverage + left_pebs_coverage) / 2
+                desired_pebs_coverage = min((last_pebs_coverage + 100) / 2, last_pebs_coverage + 2 * MAX_GAP)
 
         return scan_direction, scan_order, desired_pebs_coverage
 
