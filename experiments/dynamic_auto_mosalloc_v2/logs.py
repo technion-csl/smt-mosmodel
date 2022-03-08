@@ -53,6 +53,9 @@ class Log():
         else:
             return field_val[0]
 
+    def layoutExist(self, layout):
+        return len(self.df.query(f'layout == "{layout}"')) > 0
+
     def getRealCoverage(self, layout):
         return self.getField(layout, 'real_coverage')
 
