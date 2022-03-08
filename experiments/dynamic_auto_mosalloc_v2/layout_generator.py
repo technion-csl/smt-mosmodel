@@ -860,6 +860,12 @@ class LayoutGenerator():
 
         else: # predicted_coverage is not None
             desired_pebs_coverage = predicted_coverage
+
+            # handle special cases where real coverage was not really incremented
+            base_inc = self.state_log.getGapBetweenLayoutAndItsBase(base_layout)
+            if base_inc is not None and base_inc <= 0:
+                desired_pebs_coverage += DEFAULT_INCREMENT
+
             print(f'[DEBUG]: predicting next pebs-coverage as {desired_pebs_coverage} to get real-coverage of {expected_real_coverage}')
 
         return desired_pebs_coverage, base_layout

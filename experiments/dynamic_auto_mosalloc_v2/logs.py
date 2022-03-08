@@ -293,18 +293,21 @@ class StateLog(Log):
         assert(not self.empty())
         return self.getRecord('layout', self.getLeftLayoutName())
 
+    def getGapBetweenLayoutAndItsBase(self, layout):
+        base_layout = self.getBaseLayout(layout)
+        if base_layout is None:
+            return None
+        return self.getGapFromBase(layout, base_layout)
+
     def getGapFromBase(self, layout, base_layout):
         layout_coverage = self.getRealCoverage(layout)
         assert(layout_coverage is not None)
         base_coverage = self.getRealCoverage(base_layout)
         assert(base_coverage is not None)
 
-        print('--------------------------')
-        print('last-layout = '+str(layout)+' , base_layout= '+str(base_layout))
-        print('last-layout-coverage = '+str(layout_coverage)+' , base_layout_coverage= '+str(base_coverage))
-        print('--------------------------')
-
-        return layout_coverage - base_coverage
+        gap = layout_coverage - base_coverage
+        print(f'{layout} real-coverage: {layout_coverage} , {base_layout} real-coverage: {base_coverage} ==> gap: {gap}')
+        return gap
 
     def getGapBetweenLastRecordAndIncrementBase(self):
         #self.writeRealCoverage()
