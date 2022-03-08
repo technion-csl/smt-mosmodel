@@ -295,7 +295,7 @@ class StateLog(Log):
 
     def getGapBetweenLayoutAndItsBase(self, layout):
         base_layout = self.getBaseLayout(layout)
-        if base_layout is None:
+        if base_layout is None or base_layout == 'none':
             return None
         return self.getGapFromBase(layout, base_layout)
 

@@ -677,8 +677,14 @@ class LayoutGenerator():
         scaled_pebs_to_real = scaled_pebs / layout_expected_real
         scaled_desired_coverage = scaled_pebs_to_real * expected_real_coverage
 
+        # handle corner case where real coverage was not really incremented
+        base_inc = self.state_log.getGapBetweenLayoutAndItsBase(layout)
+        if base_inc is not None and base_inc <= 0:
+            scaled_desired_coverage += DEFAULT_INCREMENT
+
         if scaled_desired_coverage >= 100.0:
             scaled_desired_coverage = layout_pebs + abs(layout_expected_real - layout_real)
+
 
         return scaled_desired_coverage
 
@@ -860,12 +866,6 @@ class LayoutGenerator():
 
         else: # predicted_coverage is not None
             desired_pebs_coverage = predicted_coverage
-
-            # handle special cases where real coverage was not really incremented
-            base_inc = self.state_log.getGapBetweenLayoutAndItsBase(base_layout)
-            if base_inc is not None and base_inc <= 0:
-                desired_pebs_coverage += DEFAULT_INCREMENT
-
             print(f'[DEBUG]: predicting next pebs-coverage as {desired_pebs_coverage} to get real-coverage of {expected_real_coverage}')
 
         return desired_pebs_coverage, base_layout
@@ -991,14 +991,20 @@ class LayoutGenerator():
         alpha, beta, gamma, U = self.getWorkingSetPages()
 
         done = False
+        add_order = self.getScanOrder('tail')
+        next_add_order = 'tail' if add_order == 'head' else 'head'
         if not done:
-            done = self.createLayout('add', 'tail', gamma)
+            done = self.createLayout('add', add_order, gamma)
         if not done:
-            done = self.createLayout('add', 'tail', U)
+            done = self.createLayout('add', add_order, U)
+        if not done:
+            done = self.createLayout('add', next_add_order, gamma)
+        if not done:
+            done = self.createLayout('add', next_add_order, U)
         if not done:
             done = self.createLayout('remove', 'tail', beta)
-        if not done:
-            done = self.createLayout('add', 'tail', beta, alpha)
+        #if not done:
+        #    done = self.createLayout('add', 'tail', beta, alpha)
         if not done:
             done = self.createLayout('auto', 'blind', None)
 
@@ -1008,16 +1014,12 @@ class LayoutGenerator():
         print(self.state_log.df)
         print('==============================================')
 
-    def createLayout(self, current_direction, start_order, main_working_set, secondary_working_set=None):
-        # head scan is a fallback for the tail scan, so do not allow performing
-        # a tail scan after starting a head scan
-        #last_layout = self.state_log.getLastLayoutName()
-        #last_direction = self.state_log.getLayoutScanDirection(last_layout)
-        #last_order = self.state_log.getLayoutScanOrder(last_layout)
-        #if current_direction == last_direction and last_order == 'head' and current_order == 'tail':
-        #    return False
-
-        current_order = self.getScanOrder(start_order)
+    def createLayout(self, current_direction, current_order, main_working_set, secondary_working_set=None):
+        # keep going with the same last scan method
+        last_layout = self.state_log.getLastLayoutName()
+        last_direction = self.state_log.getLayoutScanDirection(last_layout)
+        if last_direction != 'none' and last_direction != current_direction:
+            return False
 
         print('****************************************************************************')
         print(f'trying to create a new layout - method: {current_direction} , search-order: {current_order}')
