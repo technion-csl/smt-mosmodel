@@ -29,11 +29,12 @@ class LayoutGenerator():
         if self.layout == 'layout1':
             # 1.1. create nine layouts statically (using PEBS output):
             self.createInitialLayoutsStatically()
-        elif self.layout == 'layout10':
-            self.findSubgroupsToRedistribute()
-        else:
-            # 1.2. create other layouts dynamically
-            self.createNextLayoutDynamically()
+            return
+        if self.layout == 'layout10':
+            if self.findSubgroupsToRedistribute():
+                return
+        # 1.2. create other layouts dynamically
+        self.createNextLayoutDynamically()
 
     def createInitialLayoutsStatically(self):
         # desired weights for each group layout
@@ -113,6 +114,7 @@ class LayoutGenerator():
         real_coverage_threshold = 20
         self.updateSubgroupsLog(False)
         next_layout_num = 10
+        created_new_layouts = False
         for i in range(len(self.subgroups_log.df)-1):
             right, left = self.subgroups_log.getSubgroup(i)
             right_layout = right['layout']
@@ -120,6 +122,8 @@ class LayoutGenerator():
             real_coverage_delta = left['real_coverage'] - right['real_coverage']
             if real_coverage_delta > real_coverage_threshold:
                 next_layout_num = self.redistributeSubgroup(right_layout, left_layout, next_layout_num)
+                created_new_layouts = True
+        return created_new_layouts
 
     def redistributeSubgroup(self, right, left, start_layout_number):
         right_pages = LayoutGeneratorUtils.getLayoutHugepages(right, self.exp_dir)
