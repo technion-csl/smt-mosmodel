@@ -989,6 +989,21 @@ class LayoutGenerator():
         print(self.state_log.df)
         print('----------------------------------------------')
 
+        done = False
+        last_scan_method = self.state_log.getLayoutScanDirection(self.state_log.getLastLayoutName())
+
+        done = done or self.createLayoutUsingScanMethod(last_scan_method)
+        done = done or self.createLayoutUsingScanMethod('add')
+        done = done or self.createLayoutUsingScanMethod('remove')
+        done = done or self.createLayoutUsingScanMethod('auto')
+
+        assert done, 'cannot create next layout...'
+
+        print('----------------------------------------------')
+        print(self.state_log.df)
+        print('==============================================')
+
+    def createLayoutUsingScanMethod(self, scan_method='add'):
         # given a two layouts: R=right and L=left:
         # alpha = hugepages(R) \ hugepages(L)
         # beta = hugepages(L) \ hugepages(R)
@@ -997,35 +1012,33 @@ class LayoutGenerator():
         alpha, beta, gamma, U = self.getWorkingSetPages()
 
         done = False
-        add_order = self.getScanOrder('tail')
-        next_add_order = 'tail' if add_order == 'head' else 'head'
-        if not done:
-            done = self.createLayout('add', add_order, gamma)
-        if not done:
-            done = self.createLayout('add', add_order, U)
-        if not done:
-            done = self.createLayout('add', next_add_order, gamma)
-        if not done:
-            done = self.createLayout('add', next_add_order, U)
-        if not done:
-            done = self.createLayout('remove', 'tail', beta)
-        #if not done:
-        #    done = self.createLayout('add', 'tail', beta, alpha)
-        if not done:
-            done = self.createLayout('auto', 'blind', None)
 
-        assert done, 'cannot create next layout...'
+        if scan_method == 'add':
+            add_order = self.getScanOrder('tail')
+            next_add_order = 'tail' if add_order == 'head' else 'head'
 
-        print('----------------------------------------------')
-        print(self.state_log.df)
-        print('==============================================')
+            done = done or self.createLayout('add', add_order, gamma)
+            done = done or self.createLayout('add', add_order, U)
+            done = done or self.createLayout('add', next_add_order, gamma)
+            done = done or self.createLayout('add', next_add_order, U)
+            #done = done or self.createLayout('add', 'tail', beta, alpha)
+        elif scan_method == 'remove':
+            done = done or self.createLayout('remove', 'tail', beta)
+        elif scan_method == 'auto':
+            done = done or self.createLayout('auto', 'blind', None)
+        else:
+            done = self.createLayoutUsingScanMethod()
+
+        return done
+
+
 
     def createLayout(self, current_direction, current_order, main_working_set, secondary_working_set=None):
         # keep going with the same last scan method
-        last_layout = self.state_log.getLastLayoutName()
-        last_direction = self.state_log.getLayoutScanDirection(last_layout)
-        if last_direction != 'none' and last_direction != current_direction:
-            return False
+        #last_layout = self.state_log.getLastLayoutName()
+        #last_direction = self.state_log.getLayoutScanDirection(last_layout)
+        #if last_direction != 'none' and last_direction != current_direction:
+        #    return False
 
         print('****************************************************************************')
         print(f'trying to create a new layout - method: {current_direction} , search-order: {current_order}')
