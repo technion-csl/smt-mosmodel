@@ -871,6 +871,9 @@ class LayoutGenerator():
             desired_pebs_coverage = predicted_coverage
             print(f'[DEBUG]: predicting next pebs-coverage as {desired_pebs_coverage} to get real-coverage of {expected_real_coverage}')
 
+        base_layout_pebs_coverage = self.state_log.getPebsCoverage(base_layout)
+        if desired_pebs_coverage < base_layout_pebs_coverage:
+            desired_pebs_coverage = base_layout_pebs_coverage + MAX_GAP
         return desired_pebs_coverage, base_layout
 
     def getRemoveScanParameters(self, base_layout, expected_real_coverage, scan_direction, scan_order):
