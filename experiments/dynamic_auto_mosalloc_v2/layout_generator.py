@@ -677,14 +677,13 @@ class LayoutGenerator():
         scaled_pebs_to_real = scaled_pebs / layout_expected_real
         scaled_desired_coverage = scaled_pebs_to_real * expected_real_coverage
 
-        if handle_negligible_real_increment:
-            # handle corner case where real coverage was not really incremented
-            base_inc = self.state_log.getGapBetweenLayoutAndItsBase(layout)
-            if base_inc is not None and scan_order == 'tail':
-                if scan_direction == 'add' and base_inc <= 0:
-                   scaled_desired_coverage += DEFAULT_INCREMENT
-                elif scan_direction == 'remove' and base_inc >= 0:
-                   scaled_desired_coverage -= DEFAULT_INCREMENT
+        # handle corner case where real coverage was not really incremented
+        base_inc = self.state_log.getGapBetweenLayoutAndItsBase(layout)
+        if base_inc is not None and scan_order == 'tail':
+            if scan_direction == 'add' and base_inc <= 0:
+               scaled_desired_coverage += DEFAULT_INCREMENT
+            elif scan_direction == 'remove' and base_inc >= 0:
+               scaled_desired_coverage -= DEFAULT_INCREMENT
 
         if scaled_desired_coverage >= 100.0:
             scaled_desired_coverage = layout_pebs + abs(layout_expected_real - layout_real)
