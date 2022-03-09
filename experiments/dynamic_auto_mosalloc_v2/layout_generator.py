@@ -657,7 +657,7 @@ class LayoutGenerator():
 
         return new_pages, new_pebs_coverage
 
-    def realToPebsCoverageBasedOnExistingLayout(self, layout, expected_real_coverage):
+    def realToPebsCoverageBasedOnExistingLayout(self, layout, expected_real_coverage, scan_direction, scan_order):
         """
         1) find the real-coverage to expected-real-coverage ratio of layout
         2) scale layout pebs based on this ratio (1) (i.e., what is the pebs
@@ -677,10 +677,14 @@ class LayoutGenerator():
         scaled_pebs_to_real = scaled_pebs / layout_expected_real
         scaled_desired_coverage = scaled_pebs_to_real * expected_real_coverage
 
-        # handle corner case where real coverage was not really incremented
-        base_inc = self.state_log.getGapBetweenLayoutAndItsBase(layout)
-        if base_inc is not None and base_inc <= 0:
-            scaled_desired_coverage += DEFAULT_INCREMENT
+        if handle_negligible_real_increment:
+            # handle corner case where real coverage was not really incremented
+            base_inc = self.state_log.getGapBetweenLayoutAndItsBase(layout)
+            if base_inc is not None and scan_order == 'tail':
+                if scan_direction == 'add' and base_inc <= 0:
+                   scaled_desired_coverage += DEFAULT_INCREMENT
+                elif scan_direction == 'remove' and base_inc >= 0:
+                   scaled_desired_coverage -= DEFAULT_INCREMENT
 
         if scaled_desired_coverage >= 100.0:
             scaled_desired_coverage = layout_pebs + abs(layout_expected_real - layout_real)
@@ -701,7 +705,7 @@ class LayoutGenerator():
             # order then try to predict the next coverage by scaling the found
             # layout pebs value based on its expected vs real coverage
             layout = query.iloc[0]['layout']
-            desired_coverage = self.realToPebsCoverageBasedOnExistingLayout(layout, expected_real_coverage)
+            desired_coverage = self.realToPebsCoverageBasedOnExistingLayout(layout, expected_real_coverage, scan_direction, scan_order)
             if scan_direction == 'add' and self.state_log.getRealCoverage(layout) < expected_real_coverage:
                 base_layout = layout
             elif scan_direction == 'remove' and self.state_log.getRealCoverage(layout) > expected_real_coverage:
@@ -757,7 +761,7 @@ class LayoutGenerator():
 
         if right is None:
             # left is not None
-            desired_coverage = self.realToPebsCoverageBasedOnExistingLayout(left_layout, expected_real_coverage)
+            desired_coverage = self.realToPebsCoverageBasedOnExistingLayout(left_layout, expected_real_coverage, scan_direction, scan_order)
             print(f'[DEBUG]: predicting next pebs coverage based on {left_layout} left-layout to: {desired_coverage}')
             if scan_direction == 'remove':
                 base_layout = left_layout
@@ -765,15 +769,15 @@ class LayoutGenerator():
 
         if left is None:
             # right is not None
-            desired_coverage = self.realToPebsCoverageBasedOnExistingLayout(right_layout, expected_real_coverage)
+            desired_coverage = self.realToPebsCoverageBasedOnExistingLayout(right_layout, expected_real_coverage, scan_direction, scan_order)
             print(f'[DEBUG]: predicting next pebs coverage based on {right_layout} right-layout to: {desired_coverage}')
             if scan_direction == 'add':
                 base_layout = right_layout
             return desired_coverage, right_layout
 
         # scale based on the lower pebs coverage
-        scaled_right_pebs_coverage = self.realToPebsCoverageBasedOnExistingLayout(right_layout, expected_real_coverage)
-        scaled_left_pebs_coverage = self.realToPebsCoverageBasedOnExistingLayout(left_layout, expected_real_coverage)
+        scaled_right_pebs_coverage = self.realToPebsCoverageBasedOnExistingLayout(right_layout, expected_real_coverage, scan_direction, scan_order)
+        scaled_left_pebs_coverage = self.realToPebsCoverageBasedOnExistingLayout(left_layout, expected_real_coverage, scan_direction, scan_order)
 
         # prefer scaling by the lower pebs-coverage, which is of the right
         # layout. If the right layout scaled pebs-coverage falls out the
@@ -849,16 +853,16 @@ class LayoutGenerator():
             if scan_direction == self.state_log.getLayoutScanDirection(last_layout) \
                     and scan_order == self.state_log.getLayoutScanOrder(last_layout):
                 base_layout = self.state_log.getBaseLayout(last_layout)
-                desired_pebs_coverage = self.realToPebsCoverageBasedOnExistingLayout(last_layout, expected_real_coverage)
+                desired_pebs_coverage = self.realToPebsCoverageBasedOnExistingLayout(last_layout, expected_real_coverage, scan_direction, scan_order)
             elif scan_order == 'tail':
                 right_layout = self.state_log.getRightLayoutName()
                 base_layout = right_layout
-                desired_pebs_coverage = self.realToPebsCoverageBasedOnExistingLayout(right_layout, expected_real_coverage) + DEFAULT_INCREMENT
+                desired_pebs_coverage = self.realToPebsCoverageBasedOnExistingLayout(right_layout, expected_real_coverage, scan_direction, scan_order) + DEFAULT_INCREMENT
             elif scan_order == 'head':
                 right_layout = self.state_log.getRightLayoutName()
                 left_layout = self.state_log.getLeftLayoutName()
                 base_layout = right_layout
-                #desired_pebs_coverage = self.realToPebsCoverageBasedOnExistingLayout(left_layout, expected_real_coverage) + DEFAULT_INCREMENT
+                #desired_pebs_coverage = self.realToPebsCoverageBasedOnExistingLayout(left_layout, expected_real_coverage, scan_direction, scan_order) + DEFAULT_INCREMENT
                 desired_pebs_coverage = self.state_log.getPebsCoverage(left_layout)
             else:
                 assert False,f'unrecognized scan-order={scan_order} for add scan method'
