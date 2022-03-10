@@ -68,7 +68,11 @@ class Log():
     def getLastRecord(self):
         if self.empty():
             return None
-        return self.df.iloc[len(self.df)-1]
+
+        df = self.df.query('scan_base != "other"')
+        if len(df) == 0:
+            return None
+        return df.iloc[-1]
 
     def getLastLayoutName(self):
         """
