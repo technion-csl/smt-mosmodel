@@ -192,7 +192,7 @@ class LayoutGenerator():
             self.updateStateLog(right, left)
             # if we already closed all gaps in this group then move the
             # left budget to the next group
-            next_layout = self.state_log.getNextIncrementBase(right_layout)
+            next_layout = self.state_log.getNextIncrementBase()
             if next_layout is None:
                 print('===========================================================')
                 print(f'[DEBUG] closed all gaps for subgroup: {right_layout} - {left_layout}')
@@ -691,7 +691,35 @@ class LayoutGenerator():
 
         return scaled_desired_coverage
 
+    def scaleLastLayoutToExpectedCoverage(self, expected_real_coverage):
+        last_layout = self.state_log.getLastLayoutName()
+        last_pebs = self.state_log.getPebsCoverage(last_layout)
+        last_real = self.state_log.getRealCoverage(last_layout)
+
+        pebs_delta = self.state_log.getPebsCoverageDeltaBetweenLayoutAndItsBase(last_layout)
+        real_gap = self.state_log.getGapBetweenLayoutAndItsBase(last_layout)
+        if pebs_delta is None or real_gap is None:
+            return None, None
+
+        # if the increment base-layout was changed, then fallback
+        if self.state_log.getIncBaseLayout(last_layout) != self.state_log.getNextIncrementBase():
+            return None, None
+
+        if real_gap <= 0:
+            desired_coverage = last_pebs + pebs_delta * 2
+            base_layout = last_layout
+            if desired_coverage < 100:
+                return desired_coverage, base_layout
+
+        return None, None
+
+
     def tryToConcludeNextCoverage(self, base_layout, expected_real_coverage, scan_direction, scan_order):
+
+        desired_coverage, new_base_layout = self.scaleLastLayoutToExpectedCoverage(expected_real_coverage)
+        if desired_coverage is not None:
+            return desired_coverage, new_base_layout
+
         base_layout_pages = LayoutGeneratorUtils.getLayoutHugepages(base_layout, self.exp_dir)
         selected_layouts = []
 
@@ -1014,6 +1042,7 @@ class LayoutGenerator():
         done = False
 
         if scan_method == 'add':
+            '''
             add_order = self.getScanOrder('tail')
             next_add_order = 'tail' if add_order == 'head' else 'head'
 
@@ -1022,6 +1051,11 @@ class LayoutGenerator():
             done = done or self.createLayout('add', next_add_order, gamma)
             done = done or self.createLayout('add', next_add_order, U)
             #done = done or self.createLayout('add', 'tail', beta, alpha)
+            '''
+            done = done or self.createLayout('add', 'tail', gamma)
+            done = done or self.createLayout('add', 'tail', U)
+            done = done or self.createLayout('add', 'head', gamma)
+            done = done or self.createLayout('add', 'head', U)
         elif scan_method == 'remove':
             done = done or self.createLayout('remove', 'tail', beta)
         elif scan_method == 'auto':
@@ -1045,8 +1079,8 @@ class LayoutGenerator():
 
         # start looking for the next gap to close in the current interval
         right_layout = self.state_log.getRightLayoutName()
-        increment_base = self.state_log.getNextIncrementBase(right_layout)
-        base_layout = self.state_log.getNextBaseLayout(right_layout, current_direction, current_order)
+        increment_base = self.state_log.getNextIncrementBase()
+        base_layout = self.state_log.getNextBaseLayout(current_direction, current_order)
         expected_real_coverage = self.state_log.getNextExpectedRealCoverage()
         assert increment_base is not None
 

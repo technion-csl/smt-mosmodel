@@ -297,6 +297,19 @@ class StateLog(Log):
         assert(not self.empty())
         return self.getRecord('layout', self.getLeftLayoutName())
 
+    def getPebsCoverageDeltaBetweenLayoutAndItsBase(self, layout):
+        base_layout = self.getBaseLayout(layout)
+        if base_layout is None or base_layout == 'none':
+            return None
+
+        layout_coverage = self.getPebsCoverage(layout)
+        assert(layout_coverage is not None)
+        base_coverage = self.getPebsCoverage(base_layout)
+        assert(base_coverage is not None)
+
+        delta = layout_coverage - base_coverage
+        return delta
+
     def getGapBetweenLayoutAndItsBase(self, layout):
         base_layout = self.getBaseLayout(layout)
         if base_layout is None or base_layout == 'none':
@@ -334,10 +347,11 @@ class StateLog(Log):
     def getLayoutScanValue(self, layout_name):
         return self.getField(layout_name, 'scan_value')
 
-    def getNextBaseLayout(self, start_layout, scan_direction, scan_order):
+    def getNextBaseLayout(self, scan_direction, scan_order):
+        start_layout = self.getRightLayoutName()
         start_layout_coverage = self.getRealCoverage(start_layout)
         max_coverage = self.getRealCoverage(self.getLeftLayoutName())
-        increment_base = self.getNextIncrementBase(start_layout)
+        increment_base = self.getNextIncrementBase()
         if increment_base is None:
             return None
         increment_layout_coverage = self.getRealCoverage(increment_base)
@@ -348,7 +362,8 @@ class StateLog(Log):
         assert len(df) > 0
         return df.iloc[-1]['layout']
 
-    def getNextIncrementBase(self, start_layout):
+    def getNextIncrementBase(self):
+        start_layout = self.getRightLayoutName()
         start_layout_coverage = self.getRealCoverage(start_layout)
         max_coverage = self.getRealCoverage(self.getLeftLayoutName())
         df = self.df.query(f'real_coverage >= {start_layout_coverage}')
@@ -366,8 +381,7 @@ class StateLog(Log):
         return current_layout
 
     def getNextExpectedRealCoverage(self):
-        right_layout = self.getRightLayoutName()
-        next_increment = self.getNextIncrementBase(right_layout)
+        next_increment = self.getNextIncrementBase()
         inc_real_coverage = self.getRealCoverage(next_increment)
         max_expected_real = inc_real_coverage + 2 * EXPECTED_INCREMENT
 
