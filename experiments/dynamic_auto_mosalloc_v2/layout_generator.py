@@ -2,6 +2,7 @@
 from struct import calcsize
 import sys
 import os
+import collections
 import pandas as pd
 import itertools
 import os.path
@@ -14,6 +15,7 @@ from Utils.ConfigurationFile import Configuration
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+'/../../analysis')
 from performance_statistics import PerformanceStatistics
 
+HEAD_PAGES_WEIGHT_THRESHOLD = 5.0
 DEFAULT_INCREMENT = 2 * MAX_GAP
 
 class LayoutGenerator():
@@ -558,7 +560,42 @@ class LayoutGenerator():
     def addTailPages(self, base_layout_pages, add_working_set, remove_working_set, desired_pebs_coverage):
         return self.addPagesToBasePages(base_layout_pages, add_working_set, remove_working_set, desired_pebs_coverage, True)
 
-    def addMinimalHeadPages(self, base_layout_pages, add_working_set, remove_working_set, desired_pebs_coverage, add_from_tail=True):
+    def addMinimalHeadPagesByWeight(self, base_layout_pages, add_working_set, head_pages_working_set, desired_pebs_coverage, add_from_tail=True):
+        if head_pages_working_set is None:
+            head_pages_working_set = []
+        head_pages_df = self.pebs_df.query(f'PAGE_NUMBER in {head_pages_working_set} or PAGE_NUMBER in {base_layout_pages}')
+        head_pages_df = head_pages_df.query(f'TLB_COVERAGE >= {HEAD_PAGES_WEIGHT_THRESHOLD}')
+        head_pages = head_pages_df.sort_values('TLB_COVERAGE', ascending=True)['PAGE_NUMBER'].to_list()
+        head_pages_num = len(head_pages)
+        head_pages_group = [[head_pages[i]] for i in range(head_pages_num)]
+
+        # filter-out head pages from the base layout to allow adding them gradually
+        add_working_set = list( set(add_working_set) - set(head_pages) )
+
+        head_pages_dict = dict()
+        for subset_size in range(head_pages_num + 1):
+            for subset in itertools.combinations(head_pages_group, subset_size):
+                head_pages = list(itertools.chain(*subset))
+                head_pages_pebs = LayoutGeneratorUtils.calculateTlbCoverage(self.pebs_df, head_pages)
+                head_pages_dict[tuple(head_pages)] = head_pages_pebs
+        head_pages_dict = sorted(head_pages_dict.items(), key=lambda kv: kv[1])
+        head_pages_dict = collections.OrderedDict(head_pages_dict)
+
+        for head_pages, pebs in head_pages_dict.items():
+            # add the head-pages susbet to the base-layout pages for
+            # considering them when adding tail pages
+            new_base_layout_pages = base_layout_pages + list(head_pages)
+            new_base_pages_coverage = LayoutGeneratorUtils.calculateTlbCoverage(self.pebs_df, new_base_layout_pages)
+            if new_base_pages_coverage > desired_pebs_coverage:
+                continue
+
+            pages, pebs = self.addPagesToBasePages(new_base_layout_pages, add_working_set, [], desired_pebs_coverage, add_from_tail)
+            if pages is not None and not self.pagesSetExist(pages):
+                return pages, pebs
+
+        return None, -1
+
+    def addMinimalHeadPagesByNumber(self, base_layout_pages, add_working_set, remove_working_set, desired_pebs_coverage, add_from_tail=True):
         head_pages_df = self.pebs_df.query(f'PAGE_NUMBER in {add_working_set} and PAGE_NUMBER not in {base_layout_pages} and TLB_COVERAGE >= 5.0')
         head_pages = head_pages_df.sort_values('TLB_COVERAGE')['PAGE_NUMBER'].to_list()
         head_pages_num = len(head_pages)
@@ -590,6 +627,9 @@ class LayoutGenerator():
                     return pages, pebs
 
         return None, -1
+
+    def addMinimalHeadPages(self, base_layout_pages, add_working_set, head_pages_working_set, desired_pebs_coverage, add_from_tail=True):
+        return self.addMinimalHeadPagesByWeight(base_layout_pages, add_working_set, head_pages_working_set, desired_pebs_coverage, add_from_tail)
 
     def addHeadPages(self, base_layout_pages, add_working_set, remove_working_set, desired_pebs_coverage):
         #return self.addPagesToBasePages(base_layout_pages, add_working_set, remove_working_set, desired_pebs_coverage, False)
@@ -661,13 +701,17 @@ class LayoutGenerator():
         """
         1) find the real-coverage to expected-real-coverage ratio of layout
         2) scale layout pebs based on this ratio (1) (i.e., what is the pebs
-        value that if was used expected-real-coverage was obtained)
+        value that if will be used then expected-real-coverage will be obtained)
         3) find the predcited-pebs (2) to real coverage ratio
         4) scale the expected_real_coverage based on the ratio calculated in (3)
         """
         layout_real = self.state_log.getRealCoverage(layout)
         layout_pebs = self.state_log.getPebsCoverage(layout)
         layout_expected_real = self.state_log.getExpectedRealCoverage(layout)
+
+        if 'head' in scan_order:
+            scaled_desired_coverage = layout_expected_real - layout_real + layout_pebs
+            return scaled_desired_coverage
 
         # prevent division by zero and getting numerous ratio in
         # the calculation of expected_to_real
@@ -676,18 +720,6 @@ class LayoutGenerator():
         scaled_pebs = layout_pebs * expected_to_real
         scaled_pebs_to_real = scaled_pebs / layout_expected_real
         scaled_desired_coverage = scaled_pebs_to_real * expected_real_coverage
-
-        # handle corner case where real coverage was not really incremented
-        base_inc = self.state_log.getGapBetweenLayoutAndItsBase(layout)
-        if base_inc is not None and scan_order == 'tail':
-            if scan_direction == 'add' and base_inc <= 0:
-               scaled_desired_coverage += DEFAULT_INCREMENT
-            elif scan_direction == 'remove' and base_inc >= 0:
-               scaled_desired_coverage -= DEFAULT_INCREMENT
-
-        if scaled_desired_coverage >= 100.0:
-            scaled_desired_coverage = layout_pebs + abs(layout_expected_real - layout_real)
-
 
         return scaled_desired_coverage
 
