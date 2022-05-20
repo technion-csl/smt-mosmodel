@@ -31,7 +31,7 @@ import os
 layout_list = []
 if args.layouts == None:
     for f in os.scandir(args.experiments_root):
-        if f.is_dir() and f.name.startswith('layout') and not f.name == 'layouts':
+        if f.is_dir() and f.name.startswith('layout') and not f.name == 'layouts' and not 'outlier' in f.name:
             layout_list.append(f.name)
     if layout_list == []:
         print('layouts argument is empty, skipping...')
