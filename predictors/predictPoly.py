@@ -1,15 +1,15 @@
 #! /usr/bin/env python3
 
 import sys, os
-sys.path.append(os.path.abspath('..'))
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+'/../analysis/mosmodel')
 import my_models
 import utility
 
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument('-c', '--page_walk_cycles', type=float, required=True)
+parser.add_argument('-C', '--walk_cycles', type=float, required=True)
 parser.add_argument('-d', '--poly_degree', type=int, choices=[1,2,3], default=3)
-parser.add_argument('-t', '--train_dataset', default='../train/mean.csv')
+parser.add_argument('-t', '--train_dataset', default='../analysis/mosmodel/train/mean.csv')
 args = parser.parse_args()
 
 import pandas as pd
@@ -22,8 +22,8 @@ if args.poly_degree == 1:
 elif args.poly_degree == 2:
     model = my_models.poly2
 
-runtime = my_models.predictRuntime(model, train_df, ['walk_cycles'], [[args.page_walk_cycles]])
+runtime = my_models.predictRuntime(model, train_df, ['walk_cycles'], [[args.walk_cycles]])
 
 print(str.format('Polynomial (degree=${degree}) model prediction:', degree=args.poly_degree))
 print('------------------------')
-print('page-walk-cycles = ',args.page_walk_cycles,' --> runtime = ',runtime)
+print(f'walk-cycles = {args.walk_cycles} --> runtime = {runtime}')
