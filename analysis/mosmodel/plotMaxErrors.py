@@ -5,6 +5,7 @@ def round_up(num, to_nearest_num):
     return math.ceil((num / to_nearest_num)) * to_nearest_num
 
 import matplotlib
+matplotlib.use('Agg') #use a non-interactive backend
 import matplotlib.pyplot as plt
 import numpy as np
 
