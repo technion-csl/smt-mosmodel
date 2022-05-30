@@ -11,7 +11,7 @@ SUBMODULES := \
 	subgroups_head_pages \
 	static_auto_mosalloc \
 	dynamic_auto_mosalloc \
-	dynamic_auto_mosalloc_v2 \
+	moselect \
 	dynamic_grouping \
 	runtime_range \
 	genetic_scan \
