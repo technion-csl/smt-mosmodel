@@ -16,15 +16,17 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+'/../../analysis')
 from performance_statistics import PerformanceStatistics
 
 HEAD_PAGES_WEIGHT_THRESHOLD = 5.0
-DEFAULT_INCREMENT = 2 * MAX_GAP
 
 class LayoutGenerator():
-    def __init__(self, pebs_df, results_df, layout, exp_dir):
+    def __init__(self, pebs_df, results_df, layout, exp_dir, max_gap=4, default_num_layouts=50):
         self.pebs_df = pebs_df
         self.results_df = results_df
         self.layout = layout
         self.exp_dir = exp_dir
-        self.subgroups_log = SubgroupsLog(exp_dir, results_df)
+        self.max_gap = max_gap
+        self.default_num_layouts = default_num_layouts
+        self.default_increment = 2 * max_gap
+        self.subgroups_log = SubgroupsLog(exp_dir, results_df, max_gap, default_num_layouts)
         self.state_log = None
 
     def generateLayout(self):
@@ -177,8 +179,9 @@ class LayoutGenerator():
         else:
             self.subgroups_log.sortByRealCoverage()
 
-    def findNextSubgroup(self):
-        found = False
+    def getSubgroupWithMaximalGap(self):
+        max_gap = 0
+        state_log = None
         # find the first group that still has a remaining budget
         for i in range(len(self.subgroups_log.df)-1):
             right, left = self.subgroups_log.getSubgroup(i)
@@ -188,50 +191,85 @@ class LayoutGenerator():
             self.state_log = StateLog(self.exp_dir,
                                       self.results_df,
                                       right_layout,
-                                      left_layout)
+                                      left_layout,
+                                      self.max_gap,
+                                      self.default_num_layouts)
+            # if the state log is empty then it seems just now we are
+            # about to start scanning this group
+            self.updateStateLog(right, left)
+            curr_max_gap = self.state_log.getMaxGap()
+            if curr_max_gap > max_gap:
+                max_gap = curr_max_gap
+                state_log = self.state_log
+        return max_gap, state_log
+
+    def getFirstSubgroupToProcess(self):
+        unclosed_subgroups = 0
+        # find the first group that still has a remaining budget
+        for i in range(len(self.subgroups_log.df)-1):
+            right, left = self.subgroups_log.getSubgroup(i)
+            right_layout = right['layout']
+            left_layout = left['layout']
+            # initialize the state-log for the current group
+            self.state_log = StateLog(self.exp_dir,
+                                      self.results_df,
+                                      right_layout,
+                                      left_layout,
+                                      self.max_gap,
+                                      self.default_num_layouts)
             # if the state log is empty then it seems just now we are
             # about to start scanning this group
             self.updateStateLog(right, left)
             # if we already closed all gaps in this group then move the
             # left budget to the next group
             next_layout = self.state_log.getNextIncrementBase()
+            remaining_budget = self.subgroups_log.getRemainingBudget(left_layout)
             if next_layout is None:
                 print('===========================================================')
                 print(f'[DEBUG] closed all gaps for subgroup: {right_layout} - {left_layout}')
                 print('===========================================================')
-                self.subgroups_log.zeroBudget(left_layout)
                 continue
-            extra_budget = self.subgroups_log.getExtraBudget()
-            # if already consumed the total budget then move to next group
-            remaining_budget = left['remaining_budget']
-            if (remaining_budget + extra_budget) == 0:
+            elif remaining_budget <= 0:
+                assert remaining_budget == 0
                 print('===========================================================')
                 print(f'[DEBUG] consumed all budget but did not close all gaps for subgroup: {right_layout} - {left_layout}')
                 print('===========================================================')
+                unclosed_subgroups += 1
                 continue
-            # if there is an extra budget that remained---and not used---from
-            # previous group, then add it to current group
-            if extra_budget > 0:
-                self.subgroups_log.addExtraBudget(left_layout, extra_budget)
-            found = True
-            break
-        print('===========================================================')
-        if found:
-            print(f'[DEBUG] start closing gaps for subgroup: {right_layout} - {left_layout}')
-        else:
-            print('[DEBUG] could not find subgroup to close its gaps')
-        print('===========================================================')
+            else:
+                assert remaining_budget > 0
+                return self.state_log, unclosed_subgroups
+        return None, unclosed_subgroups
 
-        return found
+    def initStateLogForNextSungroupToProcess(self):
+        state_log, unclosed_subgroups = self.getFirstSubgroupToProcess()
+        if state_log is None:
+            if unclosed_subgroups == 0:
+                print('===========================================================')
+                print(f'[DEBUG] ++++ closed all gaps for all subgroups ++++')
+                print('===========================================================')
+            max_gap, state_log = self.getSubgroupWithMaximalGap()
+            self.state_log = state_log
+            print('===========================================================')
+            print(f'[DEBUG] start closing gaps for subgroup: {state_log.getRightLayoutName()} - {state_log.getLeftLayoutName()}, which has the maximal gap: {max_gap}')
+            print('===========================================================')
+            remaining_budget = self.subgroups_log.zeroAllBudgets()
+            if remaining_budget == 0:
+                print('===========================================================')
+                print(f'[WARNING] Consumed the total allocated budget but got a request to create a new layout!')
+                print('===========================================================')
+                remaining_budget = 1
+            self.subgroups_log.addExtraBudget(state_log.getLeftLayoutName(), remaining_budget)
+        self.state_log = state_log
 
     def updateLogs(self):
         self.updateSubgroupsLog()
 
-        # run findNextSubgroup twice to allow a second pass over the subgroups
-        # list to make sure that passed remaining budget can be reused again
-        # for some previous subgroup
-        if self.findNextSubgroup() or self.findNextSubgroup():
-            return True
+        self.initStateLogForNextSungroupToProcess()
+        # TODO: how to utilize the additional layouts after closing all gaps?
+        # by closing gaps in the subgroup with maximal gap
+        # or by scanning all layouts as one big-group and close the maximal gap
+        return True
 
         # could not fins subgroup that has some gaps to be closed
         # then move to minimize the max gap
@@ -247,7 +285,9 @@ class LayoutGenerator():
 
         self.state_log = StateLog(self.exp_dir,
                                     self.results_df,
-                                    right['layout'], left['layout'])
+                                    right['layout'], left['layout'],
+                                    self.max_gap,
+                                    self.default_num_layouts)
         self.updateStateLog(right, left)
         self.improveMaxGapFurthermore()
         return False
@@ -888,7 +928,7 @@ class LayoutGenerator():
                 scan_order = 'blind'
             else:
                 # update desired_pebs_coverage since we jumped too far
-                desired_pebs_coverage = min((last_pebs_coverage + 100) / 2, last_pebs_coverage + DEFAULT_INCREMENT)
+                desired_pebs_coverage = min((last_pebs_coverage + 100) / 2, last_pebs_coverage + self.default_increment)
 
         return scan_direction, scan_order, desired_pebs_coverage
 
@@ -916,12 +956,12 @@ class LayoutGenerator():
             elif scan_order == 'tail':
                 right_layout = self.state_log.getRightLayoutName()
                 base_layout = right_layout
-                desired_pebs_coverage = self.realToPebsCoverageBasedOnExistingLayout(right_layout, expected_real_coverage, scan_direction, scan_order) + DEFAULT_INCREMENT
+                desired_pebs_coverage = self.realToPebsCoverageBasedOnExistingLayout(right_layout, expected_real_coverage, scan_direction, scan_order) + self.default_increment
             elif scan_order == 'head':
                 right_layout = self.state_log.getRightLayoutName()
                 left_layout = self.state_log.getLeftLayoutName()
                 base_layout = right_layout
-                #desired_pebs_coverage = self.realToPebsCoverageBasedOnExistingLayout(left_layout, expected_real_coverage, scan_direction, scan_order) + DEFAULT_INCREMENT
+                #desired_pebs_coverage = self.realToPebsCoverageBasedOnExistingLayout(left_layout, expected_real_coverage, scan_direction, scan_order) + self.default_increment
                 desired_pebs_coverage = self.state_log.getPebsCoverage(left_layout)
             else:
                 assert False,f'unrecognized scan-order={scan_order} for add scan method'
@@ -937,6 +977,15 @@ class LayoutGenerator():
         return desired_pebs_coverage, base_layout
 
     def getRemoveScanParameters(self, base_layout, expected_real_coverage, scan_direction, scan_order):
+        last_layout = self.state_log.getLastLayoutName()
+        last_real = self.state_log.getRealCoverage(last_layout)
+        if last_real > expected_real_coverage:
+            last_pebs = self.state_log.getPebsCoverage(last_layout)
+            base_layout = last_layout
+            desired_pebs_coverage = last_pebs - (last_real - expected_real_coverage)
+            if desired_pebs_coverage > 0:
+                return desired_pebs_coverage, base_layout
+
         predicted_coverage, base_layout = self.tryToConcludeNextCoverage(base_layout, expected_real_coverage, scan_direction, scan_order)
         left_layout = self.state_log.getLeftLayoutName()
         if predicted_coverage is None and base_layout != left_layout:
@@ -984,9 +1033,9 @@ class LayoutGenerator():
         pebs_delta = abs(last_pebs - base_pebs)
         real_delta = abs(last_real - base_real)
 
-        if pebs_delta < 1 and real_delta > DEFAULT_INCREMENT:
+        if pebs_delta < 1 and real_delta > self.default_increment:
             return 'tail'
-        elif real_delta < 1 and pebs_delta > DEFAULT_INCREMENT:
+        elif real_delta < 1 and pebs_delta > self.default_increment:
             return 'head'
         else:
             return self.state_log.getLayoutScanOrder(last_layout)

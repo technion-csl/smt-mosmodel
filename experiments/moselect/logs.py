@@ -4,10 +4,6 @@ import pandas as pd
 from ast import literal_eval
 import os.path
 
-MAX_GAP = 4
-MAX_TRIALS = 50
-EXPECTED_INCREMENT = MAX_GAP - 0.5
-
 class Singleton(type):
     _instances = {}
 
@@ -111,10 +107,12 @@ class Log():
 
 
 class SubgroupsLog(Log, metaclass=Singleton):
-    def __init__(self, exp_dir, results_df):
+    def __init__(self, exp_dir, results_df, max_gap, default_num_layouts):
         default_columns = [
             'layout', 'total_budget', 'remaining_budget',
             'pebs_coverage', 'real_coverage', 'walk_cycles']
+        self.max_gap = max_gap
+        self.default_num_layouts = default_num_layouts
         super().__init__(exp_dir, results_df, 'subgroups.log', default_columns)
 
     def addRecord(self,
@@ -140,7 +138,7 @@ class SubgroupsLog(Log, metaclass=Singleton):
         self.df = self.df.sort_values('walk_cycles', ascending=False)
 
     def getExtraBudget(self):
-        return MAX_TRIALS - (self.getTotalBudget() + len(self.df))
+        return self.default_num_layouts - (self.getTotalBudget() + len(self.df))
 
     def calculateBudget(self):
         query = self.df.query('real_coverage == (-1)')
@@ -154,13 +152,13 @@ class SubgroupsLog(Log, metaclass=Singleton):
         # (call it delta[i] for the diff between group[i] and group[i+1])
         self.df['delta'] = self.df['real_coverage'].diff().abs()
         self.df['delta'] = self.df['delta'].fillna(0)
-        total_deltas = self.df.query(f'delta > {MAX_GAP}')['delta'].sum()
+        total_deltas = self.df.query(f'delta > {self.max_gap}')['delta'].sum()
         # budgest = 50-9: num_layouts(50) - subgroups_layouts(9)
-        total_budgets = MAX_TRIALS - len(self.df)
+        total_budgets = self.default_num_layouts - len(self.df)
         for index, row in self.df.iterrows():
             delta = row['delta']
-            # for each delta < MAX_GAP assign budget=0
-            if delta <= MAX_GAP:
+            # for each delta < self.max_gap assign budget=0
+            if delta <= self.max_gap:
                 budget = 0
             else:
                 budget = int((delta / total_deltas) * total_budgets)
@@ -179,12 +177,19 @@ class SubgroupsLog(Log, metaclass=Singleton):
         self.df.loc[self.df['layout'] == layout, 'remaining_budget'] = self.df.loc[self.df['layout'] == layout, 'remaining_budget']-1
         self.writeLog()
 
+    def zeroAllBudgets(self):
+        remaining = 0
+        for index, row in self.df.iterrows():
+            layout = row['layout']
+            remaining += self.zeroBudget(layout)
+        return remaining
     def zeroBudget(self, layout):
         total = self.getField(layout, 'total_budget')
         remaining = self.getField(layout, 'remaining_budget')
         self.df.loc[self.df['layout'] == layout, 'total_budget'] = total - remaining
         self.df.loc[self.df['layout'] == layout, 'remaining_budget'] = 0
         self.writeLog()
+        return remaining
 
     def addExtraBudget(self, layout, extra_budget):
         self.df.loc[self.df['layout'] == layout, 'remaining_budget'] = self.df.loc[self.df['layout'] == layout, 'remaining_budget']+extra_budget
@@ -201,6 +206,9 @@ class SubgroupsLog(Log, metaclass=Singleton):
         df = self.df.sort_values('walk_cycles', ascending=True)
         return df.iloc[0]
 
+    def getRemainingBudget(self, left_layout):
+        return self.getField(left_layout, 'remaining_budget')
+
     def getTotalRemainingBudget(self):
         return self.df['remaining_budget'].sum()
 
@@ -209,16 +217,20 @@ class SubgroupsLog(Log, metaclass=Singleton):
 
 
 class StateLog(Log):
-    def __init__(self, exp_dir, results_df, right_layout, left_layout):
+    def __init__(self, exp_dir, results_df, right_layout, left_layout, max_gap, default_num_layouts):
         default_columns = [
             'layout', 'scan_base', 'increment_base',
             'scan_direction', 'scan_order', 'scan_value',
             'pebs_coverage', 'increment_real_coverage',
             'expected_real_coverage', 'real_coverage',
             'walk_cycles']
+        self.max_gap = max_gap
+        self.default_num_layouts = default_num_layouts
+        self.expected_increment = self.max_gap - 0.5
         self.right_layout = right_layout
         self.left_layout = left_layout
         state_name = right_layout + '_' + left_layout
+
         super().__init__(exp_dir, results_df,
                          state_name + '_state.log', default_columns)
         super().writeRealCoverage()
@@ -371,7 +383,7 @@ class StateLog(Log):
         current_coverage = start_layout_coverage
         current_layout = start_layout
         for index, row in df.iterrows():
-            if row['real_coverage'] <= (current_coverage + MAX_GAP):
+            if row['real_coverage'] <= (current_coverage + self.max_gap):
                 current_layout = row['layout']
                 current_coverage = row['real_coverage']
                 if current_coverage >= max_coverage:
@@ -383,19 +395,17 @@ class StateLog(Log):
     def getNextExpectedRealCoverage(self):
         next_increment = self.getNextIncrementBase()
         inc_real_coverage = self.getRealCoverage(next_increment)
-        max_expected_real = inc_real_coverage + 2 * EXPECTED_INCREMENT
+        max_expected_real = inc_real_coverage + 2 * self.expected_increment
 
         df = self.df.query(f'{inc_real_coverage} < real_coverage <= {max_expected_real}')
 
         if len(df) == 0:
-            return inc_real_coverage + EXPECTED_INCREMENT
+            return inc_real_coverage + self.expected_increment
 
         df = df.sort_values('real_coverage')
         upper_real_coverage = df.iloc[0]['real_coverage']
         avg_real_coverage = (inc_real_coverage + upper_real_coverage) / 2
         return avg_real_coverage
-
-
 
     def getMaxGapLayouts(self):
         left_coverage = self.getRealCoverage(self.getLeftLayoutName())
@@ -409,3 +419,8 @@ class StateLog(Log):
         right = diffs.iloc[idx-1]
         left = diffs.iloc[idx]
         return right['layout'], left['layout']
+
+    def getMaxGap(self):
+        right, left = self.getMaxGapLayouts()
+        return abs(self.getRealCoverage(left) - self.getRealCoverage(right))
+
