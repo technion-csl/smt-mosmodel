@@ -973,7 +973,7 @@ class LayoutGenerator():
 
         base_layout_pebs_coverage = self.state_log.getPebsCoverage(base_layout)
         if desired_pebs_coverage < base_layout_pebs_coverage:
-            desired_pebs_coverage = base_layout_pebs_coverage + MAX_GAP
+            desired_pebs_coverage = base_layout_pebs_coverage + self.max_gap
         return desired_pebs_coverage, base_layout
 
     def getRemoveScanParameters(self, base_layout, expected_real_coverage, scan_direction, scan_order):
