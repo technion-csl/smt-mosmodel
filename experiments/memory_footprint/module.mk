@@ -15,4 +15,3 @@ $(LAYOUT_FILES):
 # undefine LAYOUTS to allow next makefiles to use the defaults LAYOUTS
 undefine EXTRA_ARGS_FOR_MOSALLOC
 undefine LAYOUTS
-undefine NUM_OF_REPEATS

@@ -3,10 +3,9 @@ MODULE_NAME := experiments/$(MOSELECT_EXPERIMENT_NAME)
 
 MOSELECT_EXPERIMENT := $(MODULE_NAME)
 MOSELECT_RESULTS := $(subst experiments,results,$(MOSELECT_EXPERIMENT))
-MOSELECT_NUM_OF_REPEATS ?= 4
 MOSELECT_NUM_LAYOUTS ?= 50
 NUM_LAYOUTS := $(MOSELECT_NUM_LAYOUTS)
-NUM_OF_REPEATS := $(MOSELECT_NUM_OF_REPEATS)
+NUM_OF_REPEATS := 1
 undefine LAYOUTS #allow the template to create new layouts based on the new NUM_LAYOUTS
 
 include $(EXPERIMENTS_TEMPLATE)
@@ -24,5 +23,4 @@ $(LAYOUT_FILES): $(ROOT_DIR)/$(MOSELECT_EXPERIMENT)/layouts/%.csv: $(MEMORY_FOOT
 		--results_file=$(MOSELECT_RESULTS)/median.csv
 
 override undefine NUM_LAYOUTS
-override undefine NUM_OF_REPEATS
 override undefine LAYOUTS

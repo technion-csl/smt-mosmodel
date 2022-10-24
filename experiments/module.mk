@@ -3,9 +3,7 @@ SUBMODULES := \
 	memory_footprint \
 	single_page_size \
 	pebs_tlb_miss_trace \
-	static_auto_mosalloc \
 	moselect \
-	runtime_range \
 	growing_window_2m \
 	random_window_2m \
 	sliding_window
