@@ -14,6 +14,7 @@ args = parser.parse_args()
 
 import pandas as pd
 footprint_df = pd.read_csv(args.memory_footprint)
+print(footprint_df)
 mmap_footprint = footprint_df['anon-mmap-max'][0]
 brk_footprint = footprint_df['brk-max'][0]
 

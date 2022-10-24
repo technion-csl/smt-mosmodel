@@ -1,2 +1,2 @@
-BENCHMARK_PATH ?= $(ROOT_DIR)/toy_benchmark
+BENCHMARK ?= gups/1GB
 

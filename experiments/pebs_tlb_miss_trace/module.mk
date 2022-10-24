@@ -7,20 +7,19 @@ STLB_MISS_STORES_PEBS_EVENT = $(shell perf list | grep retired | grep mem | grep
 PERF_MEM_STLB_MISSES_EVENTS = $(STLB_MISS_LOADS_PEBS_EVENT):p,$(STLB_MISS_STORES_PEBS_EVENT):p
 PERF_MEM_RECORD_CMD = perf record --data --count=$(PERF_RECORD_FREQUENCY) --event=$(PERF_MEM_STLB_MISSES_EVENTS)
 
-PEBS_EXP_OUT_DIR := $(MODULE_NAME)/repeat0
-PEBS_TLB_MISS_TRACE_OUTPUT := $(PEBS_EXP_OUT_DIR)/perf.data
+PEBS_OUT_DIR1 := $(MODULE_NAME)/1
+PEBS_OUT_DIR2 := $(MODULE_NAME)/2
+PEBS_TLB_MISS_TRACE_OUTPUT := $(PEBS_OUT_DIR1)/repeat0/perf.data
 
-$(PEBS_EXP_OUT_DIR): $(PEBS_TLB_MISS_TRACE_OUTPUT)
 $(MODULE_NAME): $(PEBS_TLB_MISS_TRACE_OUTPUT)
 
 $(PEBS_TLB_MISS_TRACE_OUTPUT): experiments/single_page_size/layouts/layout4kb.csv | experiments-prerequisites 
-	$(RUN_BENCHMARK) --exclude_files=$(notdir $@) --submit_command \
+	$(RUN_BENCHMARK) --exclude_files=$(notdir $@) --directory "$(PEBS_OUT_DIR1)" --submit_command \
 		"$(PERF_MEM_RECORD_CMD) -- $(RUN_MOSALLOC_TOOL) --analyze -cpf $(ROOT_DIR)/experiments/single_page_size/layouts/layout4kb.csv --library $(MOSALLOC_TOOL)" \
-		$(BENCHMARK_PATH) $(dir $@)
+		$(BENCHMARK)
 
 DELETE_TARGETS := $(addsuffix /delete,$(PEBS_TLB_MISS_TRACE_OUTPUT))
 
 $(MODULE_NAME)/clean:
-	rm -rf $(PEBS_EXP_OUT_DIR)
-
+	rm -rf $(PEBS_OUT_DIR1) $(PEBS_OUT_DIR2)
 

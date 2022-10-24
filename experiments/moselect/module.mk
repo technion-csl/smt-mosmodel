@@ -12,7 +12,7 @@ undefine LAYOUTS #allow the template to create new layouts based on the new NUM_
 include $(EXPERIMENTS_TEMPLATE)
 
 CREATE_MOSELECT_LAYOUTS_SCRIPT := $(MODULE_NAME)/createLayouts.py
-$(LAYOUT_FILES): $(MOSELECT_EXPERIMENT)/layouts/%.csv: $(MEMORY_FOOTPRINT_FILE) analysis/pebs_tlb_miss_trace/mem_bins_2mb.csv
+$(LAYOUT_FILES): $(ROOT_DIR)/$(MOSELECT_EXPERIMENT)/layouts/%.csv: $(MEMORY_FOOTPRINT_FILE) analysis/pebs_tlb_miss_trace/mem_bins_2mb.csv
 	mkdir -p results/$(MOSELECT_EXPERIMENT_NAME)
 	$(COLLECT_RESULTS) --experiments_root=$(MOSELECT_EXPERIMENT) --repeats=$(NUM_OF_REPEATS) \
 		--output_dir=$(MOSELECT_RESULTS) --skip_outliers

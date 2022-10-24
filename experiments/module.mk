@@ -4,18 +4,11 @@ SUBMODULES := \
 	single_page_size \
 	pebs_tlb_miss_trace \
 	static_auto_mosalloc \
-	dynamic_auto_mosalloc \
 	moselect \
-	dynamic_grouping \
 	runtime_range \
 	growing_window_2m \
 	random_window_2m \
-	sliding_window \
-	subgroups_windows \
-	subgroups_uniformly_windows \
-	subgroups_head_pages \
-	genetic_scan \
-	smart_genetic_scan
+	sliding_window
 SUBMODULES := $(addprefix $(MODULE_NAME)/,$(SUBMODULES))
 
 ##### mosalloc paths
@@ -31,8 +24,7 @@ CHECK_PARANOID := $(SCRIPTS_ROOT_DIR)/checkParanoid.sh
 SET_THP := $(SCRIPTS_ROOT_DIR)/setTransparentHugePages.sh
 SET_CPU_MEMORY_AFFINITY := $(SCRIPTS_ROOT_DIR)/setCpuMemoryAffinity.sh
 MEASURE_GENERAL_METRICS := $(SCRIPTS_ROOT_DIR)/measureGeneralMetrics.sh
-RUN_BENCHMARK := $(SCRIPTS_ROOT_DIR)/runBenchmark.py
-RUN_BENCHMARK_WITH_SLURM := $(SCRIPTS_ROOT_DIR)/runBenchmarkWithSlurm.py
+RUN_BENCHMARK := /csl/benchmarks/ubuntu20/runBenchmark.py
 COLLECT_MEMORY_FOOTPRINT := $(SCRIPTS_ROOT_DIR)/collectMemoryFootprint.py
 
 ###### global constants

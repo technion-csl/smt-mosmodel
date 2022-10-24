@@ -19,14 +19,7 @@ class Configuration:
         self.config = []
 
     def addWindow(self, type, page_size, start_offset, end_offset):
-        row = {
-            self.END_OFFSET: end_offset,
-            self.START_OFFSET: start_offset,
-            self.PAGE_SIZE: page_size,
-            self.TYPE: type
-
-        }
-        self.config.append(row)
+        self.config.append([type, page_size, start_offset, end_offset])
 
     def setPoolsSize(self, brk_size, file_size, mmap_size):
         if brk_size is not None:
@@ -58,22 +51,22 @@ class Configuration:
                 row[Configuration.END_OFFSET] = end_offset
                 start_offset = curr_start_offset
                 end_offset = curr_end_offset
-                windows = windows.append(row)
+                windows = pd.concat([windows, row])
         if start_offset != -1:
             row[Configuration.START_OFFSET] = start_offset
             row[Configuration.END_OFFSET] = end_offset
-            windows = windows.append(row)
+            windows = pd.concat([windows, row])
         return windows
 
 
     def exportToCSV(self, abs_path, layout_name):
-        df = pd.DataFrame(self.config, index=None)
-        # rearrange columns
-        df = df[[Configuration.TYPE, Configuration.PAGE_SIZE,
-                 Configuration.START_OFFSET, Configuration.END_OFFSET]]
-        windows = df[df[Configuration.PAGE_SIZE] == Configuration.POOL_SIZE_FLAG]
-        windows = windows.append(Configuration.mergeAdjacentWindows(df, Configuration.TYPE_BRK, Configuration.HUGE_2MB_PAGE_SIZE))
-        windows = windows.append(Configuration.mergeAdjacentWindows(df, Configuration.TYPE_BRK, Configuration.HUGE_1GB_PAGE_SIZE))
+        df = pd.DataFrame(self.config, index=None,
+                columns=[Configuration.TYPE, Configuration.PAGE_SIZE, Configuration.START_OFFSET, Configuration.END_OFFSET])
+        #windows = df[df[Configuration.PAGE_SIZE] == Configuration.POOL_SIZE_FLAG]
+        #configurations_2mb = Configuration.mergeAdjacentWindows(df, Configuration.TYPE_BRK, Configuration.HUGE_2MB_PAGE_SIZE)
+        #windows = pd.concat([windows, configurations_2mb])
+        #configurations_1gb = Configuration.mergeAdjacentWindows(df, Configuration.TYPE_BRK, Configuration.HUGE_1GB_PAGE_SIZE)
+        #windows = pd.concat([windows, configurations_1gb])
         #windows = windows.append(Configuration.mergeAdjacentWindows(df, Configuration.TYPE_MMAP, Configuration.HUGE_2MB_PAGE_SIZE))
         #windows = windows.append(Configuration.mergeAdjacentWindows(df, Configuration.TYPE_MMAP, Configuration.HUGE_1GB_PAGE_SIZE))
         #df = pd.DataFrame(windows, index=None)
@@ -81,6 +74,7 @@ class Configuration:
         if not os.path.exists(path):
             os.makedirs(path, exist_ok=True)
         export_file_name = os.path.join(path, layout_name + ".csv")
-        windows.to_csv(export_file_name, index=None)
+        #windows.to_csv(export_file_name, index=None)
+        df.to_csv(export_file_name, index=None)
 
 
