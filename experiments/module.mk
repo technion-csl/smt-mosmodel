@@ -9,11 +9,22 @@ SUBMODULES := \
 	sliding_window
 SUBMODULES := $(addprefix $(MODULE_NAME)/,$(SUBMODULES))
 
+###### global constants
+
+export EXPERIMENTS_ROOT := $(ROOT_DIR)/$(MODULE_NAME)
+export EXPERIMENTS_TEMPLATE := $(EXPERIMENTS_ROOT)/template.mk
+export OMP_NUM_THREADS := 1
+export OMP_THREAD_LIMIT := 1
+memory_node := 0
+first_sibling := 2
+second_sibling := 26
+measure_timeout := 600
+MOSALLOC_TOOL := $(ROOT_DIR)/mosalloc/src/libmosalloc.so
+
 ##### mosalloc paths
 RUN_MOSALLOC_TOOL := $(ROOT_DIR)/mosalloc/runMosalloc.py
 RESERVE_HUGE_PAGES := $(ROOT_DIR)/mosalloc/reserveHugePages.sh
 MOSALLOC_MAKEFILE := $(ROOT_DIR)/mosalloc/CMakeLists.txt
-export MOSALLOC_TOOL := $(ROOT_DIR)/mosalloc/src/libmosalloc.so
 
 ##### scripts
 
@@ -21,20 +32,11 @@ COLLECT_RESULTS := $(SCRIPTS_ROOT_DIR)/collectResults.py
 CHECK_PARANOID := $(SCRIPTS_ROOT_DIR)/checkParanoid.sh
 SET_THP := $(SCRIPTS_ROOT_DIR)/setTransparentHugePages.sh
 SET_CPU_MEMORY_AFFINITY := $(SCRIPTS_ROOT_DIR)/setCpuMemoryAffinity.sh
-MEASURE_GENERAL_METRICS := $(SCRIPTS_ROOT_DIR)/measureGeneralMetrics.sh
-RUN_BENCHMARK := /csl/benchmarks/ubuntu20/runBenchmark.py
 COLLECT_MEMORY_FOOTPRINT := $(SCRIPTS_ROOT_DIR)/collectMemoryFootprint.py
-
-###### global constants
-
-export EXPERIMENTS_ROOT := $(ROOT_DIR)/$(MODULE_NAME)
-export EXPERIMENTS_TEMPLATE := $(EXPERIMENTS_ROOT)/template.mk
-NUMBER_OF_SOCKETS := $(shell ls -d /sys/devices/system/node/node*/ | wc -w)
-export BOUND_MEMORY_NODE := $$(( $(NUMBER_OF_SOCKETS) - 1 ))
-export NUMBER_OF_SOCKETS := $(shell ls -d /sys/devices/system/node/node*/ | wc -w)
-export NUMBER_OF_CORES_PER_SOCKET := $(shell ls -d /sys/devices/system/node/node0/cpu*/ | wc -w)
-export OMP_NUM_THREADS := $(NUMBER_OF_CORES_PER_SOCKET) 
-export OMP_THREAD_LIMIT := $(OMP_NUM_THREADS) 
+run_benchmark := /csl/benchmarks/ubuntu20/runBenchmark.py --num_threads=1 --exclude_files perf.out perf.time perf.data
+measure_perf_events := $(SCRIPTS_ROOT_DIR)/measure_perf_events.py -r 2
+bind_first_sibling := numactl -m $(memory_node) taskset -c $(first_sibling)
+bind_second_sibling := numactl -m $(memory_node) taskset -c $(second_sibling)
 
 define configuration_array
 $(addprefix configuration,$(shell seq 1 $1))
@@ -75,7 +77,14 @@ TEST_RUN_MOSALLOC_TOOL := $(SCRIPTS_ROOT_DIR)/testRunMosallocTool.sh
 test-run-mosalloc-tool: $(RUN_MOSALLOC_TOOL) $(MOSALLOC_TOOL)
 	$(TEST_RUN_MOSALLOC_TOOL) $<
 
-#### recipes and rules for calculating the benchmark memory footprint
+#### calculating the total number of instructions
+
+INSTRUCTION_COUNT_FILE := $(MODULE_NAME)/instruction_count.csv
+
+$(INSTRUCTION_COUNT_FILE): | experiments/memory_footprint/layout4kb
+	$(SCRIPTS_ROOT_DIR)/countInstructions.py $| > $@
+
+#### calculating the benchmark memory footprint
 
 MEMORY_FOOTPRINT_FILE := $(MODULE_NAME)/memory_footprint.csv
 

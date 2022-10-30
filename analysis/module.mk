@@ -6,16 +6,7 @@ SUBMODULES := \
 	sliding_window \
 	linear_models_coeffs \
 	pebs_tlb_miss_trace \
-	subgroups_windows \
-	subgroups_uniformly_windows \
-	subgroups_head_pages \
-	static_auto_mosalloc \
-	dynamic_auto_mosalloc \
 	moselect \
-	dynamic_grouping \
-	runtime_range \
-	genetic_scan \
-	smart_genetic_scan \
 	mosmodel \
 	all_data
 SUBMODULES := $(addprefix $(MODULE_NAME)/,$(SUBMODULES))

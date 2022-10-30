@@ -26,10 +26,11 @@ $(EXPERIMENTS): $(EXPERIMENT_DIR)/%: $(EXPERIMENT_DIR)/%/1/repeat0/perf.out
 
 $(MEASUREMENTS): $(EXPERIMENT_DIR)/%/1/repeat0/perf.out: $(ROOT_DIR)/$(EXPERIMENT_DIR)/layouts/%.csv | experiments-prerequisites
 	echo ========== [INFO] start producing: $@ ==========
-	$(RUN_BENCHMARK) --directory "$(dir $@)/.." --submit_command \
-		"$(MEASURE_GENERAL_METRICS) $(SET_CPU_MEMORY_AFFINITY) $(BOUND_MEMORY_NODE) \
-		$(RUN_MOSALLOC_TOOL) --library $(MOSALLOC_TOOL) -cpf $< $(EXTRA_ARGS_FOR_MOSALLOC)" -- \
-		$(BENCHMARK)
+	experiment_dir=$$(realpath -m $@/../../..)
+	$(bind_second_sibling) $(run_benchmark) --directory "$$experiment_dir/2" --loop_until $(measure_timeout) $(BENCHMARK2) &
+	$(bind_first_sibling) $(run_benchmark) --directory "$$experiment_dir/1" --loop_until $(measure_timeout) \
+		--submit_command "$(measure_perf_events) $(RUN_MOSALLOC_TOOL) --library $(MOSALLOC_TOOL) -cpf $< $(EXTRA_ARGS_FOR_MOSALLOC)" -- \
+		$(BENCHMARK1)
 
 RESULT_DIR := $(subst experiments,results,$(EXPERIMENT_DIR))
 RESULT_DIRS += $(RESULT_DIR)

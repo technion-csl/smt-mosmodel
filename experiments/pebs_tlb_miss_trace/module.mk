@@ -14,9 +14,11 @@ PEBS_TLB_MISS_TRACE_OUTPUT := $(PEBS_OUT_DIR1)/repeat0/perf.data
 $(MODULE_NAME): $(PEBS_TLB_MISS_TRACE_OUTPUT)
 
 $(PEBS_TLB_MISS_TRACE_OUTPUT): experiments/single_page_size/layouts/layout4kb.csv | experiments-prerequisites 
-	$(RUN_BENCHMARK) --exclude_files=$(notdir $@) --directory "$(PEBS_OUT_DIR1)" --submit_command \
-		"$(PERF_MEM_RECORD_CMD) -- $(RUN_MOSALLOC_TOOL) --analyze -cpf $(ROOT_DIR)/experiments/single_page_size/layouts/layout4kb.csv --library $(MOSALLOC_TOOL)" \
-		$(BENCHMARK)
+	experiment_dir=$$(realpath -m $@/../../..)
+	$(bind_second_sibling) $(run_benchmark) --directory "$$experiment_dir/2" --loop_until $(measure_timeout) $(BENCHMARK2) &
+	$(bind_first_sibling) $(run_benchmark) --directory "$$experiment_dir/1" --loop_until $(measure_timeout) \
+		--submit_command "$(PERF_MEM_RECORD_CMD) -- $(RUN_MOSALLOC_TOOL) --library $(MOSALLOC_TOOL) --analyze -cpf $(ROOT_DIR)/experiments/single_page_size/layouts/layout4kb.csv --library $(MOSALLOC_TOOL)" \
+		$(BENCHMARK1)
 
 DELETE_TARGETS := $(addsuffix /delete,$(PEBS_TLB_MISS_TRACE_OUTPUT))
 
