@@ -49,7 +49,6 @@ for layout in layout_list:
     df = pd.read_csv(perf_file, delimiter=',', index_col='time')
     metrics = list(df.columns)
     df = df.cumsum('columns')
-    print(df)
     last_time = np.interp(instruction_count, df['instructions'], df.index)
     stats = [np.interp(last_time, df.index, df[m]) for m in metrics]
     results.append([layout] + stats)
