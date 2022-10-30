@@ -13,25 +13,12 @@ def maxError(error_column):
 def relativeError(y_true, y_pred):
     return (y_pred-y_true)/y_true
 
-import sys, os
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+'/..')
-from performance_statistics import PerformanceStatistics
+import pandas as pd
 def loadDataframe(mean_file):
-    mean_ps = PerformanceStatistics(mean_file)
-    mean_df = mean_ps.getDataFrame()
-    mean_df['cpu-cycles'] = mean_ps.getRuntime()
-    mean_df['walk_cycles'] = mean_ps.getWalkDuration()
-    mean_df['stlb_hits'] = mean_ps.getStlbHits()
-    mean_df['stlb_misses'] = mean_ps.getStlbMisses()
-    df = mean_df[['layout', 'walk_cycles', 'stlb_hits', 'stlb_misses', 'cpu-cycles']]
-
-    important_columns = list(df.columns)
-    important_columns.remove('layout')
-    #df.drop_duplicates(inplace=True, subset=important_columns)
-    #df.sort_values('cpu-cycles', inplace=True)
-    df = df.drop_duplicates(subset=important_columns)
-    df = df.sort_values('cpu-cycles')
+    df = pd.read_csv(mean_file, index_col='layout')
+    df.fillna(0, inplace=True)
+    df = df.drop_duplicates()
+    df = df.sort_values('MPKI')
 
     return df
-
 

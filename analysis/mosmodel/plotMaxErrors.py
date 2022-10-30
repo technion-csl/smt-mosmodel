@@ -60,5 +60,5 @@ args = parser.parse_args()
 import pandas as pd
 df = pd.read_csv(args.errors)
 
-plotModels(df, ['basu', 'pham', 'gandhi', 'yaniv'], args.output_dir + '/linear_models.pdf')
+plotModels(df, ['yaniv'], args.output_dir + '/linear_models.pdf')
 plotModels(df, ['poly1', 'poly2', 'poly3', 'mosmodel'], args.output_dir + '/mosalloc_models.pdf')

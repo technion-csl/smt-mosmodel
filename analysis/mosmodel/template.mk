@@ -1,19 +1,15 @@
 # MODEL_EXPERIMENTS should be set before calling this template
 
-R_SQUARES := $(MODULE_NAME)/r_squares.csv
 SCATTER_CHART := $(MODULE_NAME)/scatter.pdf
-WHISKER_CHART := $(MODULE_NAME)/whisker.pdf
 SCATTER_CSV_FILE := $(MODULE_NAME)/scatter.csv
-WHISKER_CSV_FILE := $(MODULE_NAME)/whisker.csv
 MEAN_CSV_FILE := $(MODULE_NAME)/mean.csv
 
 MODEL_MEAN_CSV_FILES := $(addsuffix /mean.csv,$(MODEL_EXPERIMENTS))
 MODEL_MEAN_CSV_FILES := $(addprefix results/,$(MODEL_MEAN_CSV_FILES))
 MODEL_EXPERIMENTS := $(addprefix analysis/,$(MODEL_EXPERIMENTS))
 MODEL_SCATTER_CSV_FILES := $(addsuffix /scatter.csv,$(MODEL_EXPERIMENTS))
-MODEL_WHISKER_CSV_FILES := $(addsuffix /whisker.csv,$(MODEL_EXPERIMENTS))
 
-TARGETS := $(SCATTER_CHART) $(WHISKER_CHART) $(SCATTER_CSV_FILE) $(MEAN_CSV_FILE) $(R_SQUARES) $(WHISKER_CSV_FILE)
+TARGETS := $(SCATTER_CHART) $(SCATTER_CSV_FILE) $(MEAN_CSV_FILE)
 
 $(MODULE_NAME): $(TARGETS)
 
@@ -25,19 +21,9 @@ $(SCATTER_CSV_FILE): $(MODEL_SCATTER_CSV_FILES)
 	head -n 1 -q $< > $@
 	tail -n +2 -q $^ >> $@
 
-$(WHISKER_CHART): $(WHISKER_CSV_FILE)
-	gnuplot -e "input_file='$^'" -e "output_file='$@'" $(WHISKER_PLOT)
-
-$(WHISKER_CSV_FILE): $(MODEL_WHISKER_CSV_FILES)
-	head -n 1 -q $< > $@
-	tail -n +2 -q $^ >> $@
-
 $(MEAN_CSV_FILE): $(MODEL_MEAN_CSV_FILES)
 	head -n 1 -q $< > $@
 	tail -n +2 -q $^ >> $@
-
-$(R_SQUARES): $(MEAN_CSV_FILE)
-	$(CALCULATE_R_SQUARES) --input=$< --output=$@
 
 DELETE_TARGETS := $(addsuffix /delete,$(TARGETS))
 $(MODULE_NAME)/clean: $(DELETE_TARGETS)

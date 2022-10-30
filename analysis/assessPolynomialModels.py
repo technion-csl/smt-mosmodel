@@ -11,15 +11,11 @@ parser.add_argument('-k', '--num_of_folds', default=3, type=int,
                     help='number of cross-validation folds')
 parser.add_argument('-d', '--max_degree', default=3, type=int,
                     help='maximum degree of polynomials')
-parser.add_argument('-m', '--metric', default='cpu-cycles',
-                    help='the metric to use (e.g., cpu-cycles)')
-parser.add_argument('-x', '--x_metric', default='walk_cycles',
-                    help='the metric to use on X-axis (e.g., walk_cycles/tlb-misses)')
 args = parser.parse_args()
 
 df = pd.read_csv(args.input_file, index_col='layout')
-x = df[[args.x_metric]]
-y = df[args.metric]
+x = df[['MPKI']]
+y = df['CPI']
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -58,8 +54,8 @@ for degree in range(1, args.max_degree+1):
             color='k', label='degree='+str(degree))
 
 # set x, y labels
-plt.xlabel('relative ' + args.x_metric)
-plt.ylabel('relative ' + args.metric)
+plt.xlabel('relative MPKI')
+plt.ylabel('relative CPI')
 
 # set legend
 handles, labels = ax.get_legend_handles_labels()

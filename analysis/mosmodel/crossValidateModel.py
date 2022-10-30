@@ -23,7 +23,6 @@ parser.add_argument('-i', '--input', required=True)
 parser.add_argument('-o', '--output', required=True)
 args = parser.parse_args()
 
-#df = pd.read_csv(args.input, index_col='layout')
 df = utility.loadDataframe(args.input)
 res_df = df.copy()
 res_df = res_df[['layout']]
