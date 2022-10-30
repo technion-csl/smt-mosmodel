@@ -18,7 +18,7 @@ export OMP_THREAD_LIMIT := 1
 memory_node := 0
 first_sibling := 2
 second_sibling := 26
-measure_timeout := 600
+measure_timeout := 60
 MOSALLOC_TOOL := $(ROOT_DIR)/mosalloc/src/libmosalloc.so
 
 ##### mosalloc paths

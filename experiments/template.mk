@@ -39,10 +39,10 @@ RESULTS := $(addsuffix /mean.csv,$(RESULT_DIR))
 results: $(RESULT_DIR)
 $(RESULTS): LAYOUT_LIST := $(call array_to_comma_separated,$(LAYOUTS))
 $(RESULT_DIR): $(RESULTS)
-$(RESULTS): results/%/mean.csv: experiments/%
+$(RESULTS): results/%/mean.csv: experiments/% $(INSTRUCTION_COUNT_FILE)
 	mkdir -p $(dir $@)
-	$(COLLECT_RESULTS) --experiments_root=$< --repeats=1 \
-		--layouts=$(LAYOUT_LIST) --output_dir=$(dir $@) --skip_outliers
+	$(COLLECT_RESULTS) --experiments_root=$< --layouts=$(LAYOUT_LIST) --output_dir=$(dir $@) \
+		--instruction_count=$(INSTRUCTION_COUNT_FILE)
 
 DELETED_TARGETS := $(EXPERIMENTS) $(EXPERIMENT_REPEATS) $(LAYOUTS_DIR)
 CLEAN_TARGETS := $(addsuffix /clean,$(DELETED_TARGETS))

@@ -40,19 +40,21 @@ if not os.path.exists(args.output_dir):
     os.makedirs(args.output_dir)
 output_dir = args.output_dir + '/'
 
+with open(args.instruction_count) as f:
+    instruction_count = int(next(f))
+
 results = []
-for layout in layouts:
-    perf_file = experiments_root + '/' + layout + '/repeat0/1/perf.time'
-    df = pd.read_csv(perf_file, delimiter=',')
-    metrics = list(df.columns).remove('time')
-    time = df['time'] # save time before cumsum
+for layout in layout_list:
+    perf_file = args.experiments_root + '/' + layout + '/1/repeat0/perf.time'
+    df = pd.read_csv(perf_file, delimiter=',', index_col='time')
+    metrics = list(df.columns)
     df = df.cumsum('columns')
-    df['time'] = time # restore time
-    last_time = np.interp(args.instruction_count, df['instructions'], df['time'])
-    stats = [np.interp(last_time, df['time'], df[m]) for m in metrics]
+    print(df)
+    last_time = np.interp(instruction_count, df['instructions'], df.index)
+    stats = [np.interp(last_time, df.index, df[m]) for m in metrics]
     results.append([layout] + stats)
 
 df = pd.DataFrame(results, columns=['layout']+metrics)
 
-df.to_csv(output_dir + 'all_repeats.csv', na_rep='NaN')
+df.to_csv(output_dir + 'mean.csv', na_rep='NaN')
 
