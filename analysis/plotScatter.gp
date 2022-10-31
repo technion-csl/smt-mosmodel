@@ -1,8 +1,8 @@
 if (!exists("input_file")) input_file='scatter.csv'
 if (!exists("output_file")) output_file='scatter.pdf'
 if (!exists("size_ratio")) size_ratio=-1
-if (!exists("x_label")) x_label='table walk overhead'
-if (!exists("y_label")) y_label='runtime'
+if (!exists("x_label")) x_label='MPKI'
+if (!exists("y_label")) y_label='CPI'
 if (!exists("legend")) legend=''
 
 set terminal pdf size 4,4

@@ -18,7 +18,6 @@ def searchEventInList(event: str, event_list: list) -> str:
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-o', '--output', type=str, default='perf.time', help='a CSV file containing the measured perf events over time')
-parser.add_argument('-r', '--research', type=int, default=1, choices=[1, 2], help='1 - L1 TLB, 2 - L2 TLB')
 parser.add_argument('subcommand', nargs=argparse.REMAINDER, help='the script will run this subcommand and collect its perf counters')
 args = parser.parse_args()
 
@@ -44,29 +43,17 @@ branch_instructions = 'br_inst_retired.all_branches'
 
 
 # Define the list of hardware events to monitor
-events = ['cycles', 'instructions', all_loads, all_stores]
+events = ['cycles', 'instructions', all_loads, all_stores,
+        l2_tlb_load_misses_retired, l2_tlb_store_misses_retired,
+        l2_tlb_load_misses_completed, l2_tlb_store_misses_completed]
 
-event_names = {all_loads: 'all_loads', all_stores: 'all_stores'}
-
-if args.research == 1: # Ella's research
-    events += [l2_tlb_load_hits_speculative, l2_tlb_store_hits_speculative,
-    mispredicted_branch_instructions, branch_instructions] 
-
-    event_names[l2_tlb_load_hits_speculative] = 'l2_tlb_load_hits_speculative'
-    event_names[l2_tlb_store_hits_speculative] = 'l2_tlb_store_hits_speculative'
-    event_names[mispredicted_branch_instructions] = 'mispredicted_branch_instructions' 
-    event_names[branch_instructions] = 'branch_instructions'
-
-else: # args.research == 2:
-    events += [l2_tlb_load_misses_retired, l2_tlb_store_misses_retired,
-            l2_tlb_load_misses_completed, l2_tlb_store_misses_completed]
-
-    event_names[l2_tlb_load_misses_retired] = 'l2_tlb_load_misses_retired'
-    event_names[l2_tlb_store_misses_retired] = 'l2_tlb_store_misses_retired'
-
-    event_names[l2_tlb_load_misses_completed] = 'l2_tlb_load_misses_completed'
-    event_names[l2_tlb_store_misses_completed] = 'l2_tlb_store_misses_completed'
-
+event_names = {all_loads: 'all_loads',
+        all_stores: 'all_stores',
+        l2_tlb_load_misses_retired: 'l2_tlb_load_misses_retired'
+        l2_tlb_store_misses_retired: 'l2_tlb_store_misses_retired'
+        l2_tlb_load_misses_completed: 'l2_tlb_load_misses_completed'
+        l2_tlb_store_misses_completed: 'l2_tlb_store_misses_completed'
+        }
 
 # Run the process and collect the measurements in perf.out
 perf_tmp_file = 'perf.out'
@@ -86,14 +73,11 @@ df.rename(columns=event_names, inplace=True)
 # Calculate a few more statistics from the existing events
 df['l1_tlb_accesses'] = df['all_loads'] + df['all_stores']
 
-if args.research == 1:
-    df['l2_tlb_hits_speculative'] = df['l2_tlb_load_hits_speculative'] + df['l2_tlb_store_hits_speculative']
-    df['l1_tlb_misses_speculative'] = df['l2_tlb_hits_speculative'] + df['l2_tlb_misses_speculative']
-else:
-    df['l2_tlb_misses_retired'] = df['l2_tlb_load_misses_retired'] + df['l2_tlb_store_misses_retired'] 
-    df['l2_tlb_misses_completed'] = df['l2_tlb_load_misses_completed'] + df['l2_tlb_store_misses_completed']
+df['l2_tlb_misses_retired'] = df['l2_tlb_load_misses_retired'] + df['l2_tlb_store_misses_retired']
+df['l2_tlb_misses_completed'] = df['l2_tlb_load_misses_completed'] + df['l2_tlb_store_misses_completed']
 
 # Print the dataframe to the output file
 df.to_csv(args.output, index=True, float_format='%#10.4g')
 
 sys.exit(completed_process.returncode)
+

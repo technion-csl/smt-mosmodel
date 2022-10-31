@@ -48,7 +48,7 @@ for layout in layout_list:
     perf_file = args.experiments_root + '/' + layout + '/1/repeat0/perf.time'
     df = pd.read_csv(perf_file, delimiter=',', index_col='time')
     metrics = list(df.columns)
-    df = df.cumsum('columns')
+    df = df.cumsum('index')
     last_time = np.interp(instruction_count, df['instructions'], df.index)
     stats = [np.interp(last_time, df.index, df[m]) for m in metrics]
     results.append(stats)
@@ -59,5 +59,5 @@ df.index.name = 'layout'
 df['CPI'] = df['cycles'] / df['instructions']
 df['MPKI'] = 1000 * df['l2_tlb_misses_completed'] / df['instructions']
 
-df.to_csv(output_dir + 'mean.csv', na_rep='NaN')
+df.to_csv(output_dir + 'mean.csv', na_rep='NaN', float_format='%#10.4g')
 
