@@ -49,10 +49,10 @@ events = ['cycles', 'instructions', all_loads, all_stores,
 
 event_names = {all_loads: 'all_loads',
         all_stores: 'all_stores',
-        l2_tlb_load_misses_retired: 'l2_tlb_load_misses_retired'
-        l2_tlb_store_misses_retired: 'l2_tlb_store_misses_retired'
-        l2_tlb_load_misses_completed: 'l2_tlb_load_misses_completed'
-        l2_tlb_store_misses_completed: 'l2_tlb_store_misses_completed'
+        l2_tlb_load_misses_retired: 'l2_tlb_load_misses_retired',
+        l2_tlb_store_misses_retired: 'l2_tlb_store_misses_retired',
+        l2_tlb_load_misses_completed: 'l2_tlb_load_misses_completed',
+        l2_tlb_store_misses_completed: 'l2_tlb_store_misses_completed',
         }
 
 # Run the process and collect the measurements in perf.out

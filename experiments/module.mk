@@ -34,7 +34,7 @@ SET_THP := $(SCRIPTS_ROOT_DIR)/setTransparentHugePages.sh
 SET_CPU_MEMORY_AFFINITY := $(SCRIPTS_ROOT_DIR)/setCpuMemoryAffinity.sh
 COLLECT_MEMORY_FOOTPRINT := $(SCRIPTS_ROOT_DIR)/collectMemoryFootprint.py
 run_benchmark := /csl/benchmarks/ubuntu20/runBenchmark.py --num_threads=1 --exclude_files perf.out perf.time perf.data
-measure_perf_events := $(SCRIPTS_ROOT_DIR)/measure_perf_events.py -r 2
+measure_perf_events := $(SCRIPTS_ROOT_DIR)/measure_perf_events.py
 bind_first_sibling := numactl -m $(memory_node) taskset -c $(first_sibling)
 bind_second_sibling := numactl -m $(memory_node) taskset -c $(second_sibling)
 
