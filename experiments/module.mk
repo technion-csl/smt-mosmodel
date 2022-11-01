@@ -81,7 +81,7 @@ test-run-mosalloc-tool: $(RUN_MOSALLOC_TOOL) $(MOSALLOC_TOOL)
 
 INSTRUCTION_COUNT_FILE := $(MODULE_NAME)/instruction_count.csv
 
-$(INSTRUCTION_COUNT_FILE): | experiments/memory_footprint/layout4kb
+$(INSTRUCTION_COUNT_FILE): | experiments/single_page_size/layout4kb
 	$(SCRIPTS_ROOT_DIR)/countInstructions.py $| > $@
 
 #### calculating the benchmark memory footprint
