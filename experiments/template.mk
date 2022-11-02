@@ -29,6 +29,7 @@ $(MEASUREMENTS): $(EXPERIMENT_DIR)/%/1/repeat0/perf.out: $(ROOT_DIR)/$(EXPERIMEN
 	experiment_dir=$$(realpath -m $@/../../..)
 	$(bind_first_sibling) $(run_benchmark) --directory "$$experiment_dir/1" --loop_until $(measure_timeout) --submit_command "$(measure_perf_events) $(RUN_MOSALLOC_TOOL) --library $(MOSALLOC_TOOL) -cpf $< $(EXTRA_ARGS_FOR_MOSALLOC)" -- $(BENCHMARK1) &
 	$(bind_second_sibling) $(run_benchmark) --directory "$$experiment_dir/2" --loop_until $(measure_timeout) $(BENCHMARK2)
+	wait
 
 RESULT_DIR := $(subst experiments,results,$(EXPERIMENT_DIR))
 RESULT_DIRS += $(RESULT_DIR)
