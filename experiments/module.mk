@@ -12,9 +12,7 @@ SUBMODULES := $(addprefix $(MODULE_NAME)/,$(SUBMODULES))
 ###### global constants
 
 export EXPERIMENTS_ROOT := $(ROOT_DIR)/$(MODULE_NAME)
-export EXPERIMENTS_TEMPLATE := $(EXPERIMENTS_ROOT)/template.mk
-export OMP_NUM_THREADS := 1
-export OMP_THREAD_LIMIT := 1
+EXPERIMENTS_TEMPLATE := $(EXPERIMENTS_ROOT)/template.mk
 memory_node := 0
 first_sibling := 2
 second_sibling := 26
