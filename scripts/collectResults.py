@@ -41,7 +41,7 @@ if not os.path.exists(args.output_dir):
 output_dir = args.output_dir + '/'
 
 with open(args.instruction_count) as f:
-    instruction_count = int(next(f))
+    instruction_count = float(next(f))
 
 results = []
 for layout in layout_list:
