@@ -23,7 +23,7 @@ args = parser.parse_args()
 
 # Find the perf hardware events available on this machine
 perf_events_string = subprocess.check_output('perf list', shell=True, text=True)
-perf_events = perf_events_string.split(' ')
+perf_events = [ev.strip() for ev in perf_events_string.split()]
 all_loads = searchEventInList('retired.all_loads', perf_events)
 all_stores = searchEventInList('retired.all_stores', perf_events)
 
